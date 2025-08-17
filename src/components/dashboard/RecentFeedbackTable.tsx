@@ -1,0 +1,219 @@
+'use client'
+
+import { useState } from "react";
+import { Eye, Search, Filter, ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface FeedbackItem {
+  id: string;
+  date: string;
+  customerName: string;
+  rating: number;
+  feedback: string;
+  sentiment: "positive" | "negative" | "neutral";
+}
+
+interface RecentFeedbackTableProps {
+  data: FeedbackItem[];
+}
+
+export const RecentFeedbackTable = ({ data }: RecentFeedbackTableProps) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sentimentFilter, setSentimentFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Filter data based on search and sentiment
+  const filteredData = data.filter((item) => {
+    const matchesSearch = 
+      (item.customerName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (item.feedback?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    
+    const matchesSentiment = sentimentFilter === "all" || item.sentiment === sentimentFilter;
+    
+    return matchesSearch && matchesSentiment;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
+  const getSentimentBadge = (sentiment: string) => {
+    const baseClasses = "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium";
+    
+    switch (sentiment) {
+      case "positive":
+        return (
+          <span className={`${baseClasses} bg-gradient-positive/20 text-green-400 border border-green-500/30`}>
+            😊 Positive
+          </span>
+        );
+      case "negative":
+        return (
+          <span className={`${baseClasses} bg-gradient-negative/20 text-red-400 border border-red-500/30`}>
+            😞 Negative
+          </span>
+        );
+      default:
+        return (
+          <span className={`${baseClasses} bg-gradient-neutral/20 text-yellow-400 border border-yellow-500/30`}>
+            😐 Neutral
+          </span>
+        );
+    }
+  };
+
+  const StarRating = ({ rating }: { rating: number }) => (
+    <div className="flex items-center gap-1">
+      {[...Array(5)].map((_, i) => (
+        <Star
+          key={i}
+          className={`w-4 h-4 ${
+            i < rating 
+              ? "text-yellow-400 fill-yellow-400" 
+              : "text-muted-foreground/30"
+          }`}
+        />
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <h2 className="text-2xl font-bold">Recent Feedback</h2>
+        
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search feedback..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-card/50 border-glass w-full sm:w-64"
+            />
+          </div>
+          
+          <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+            <SelectTrigger className="bg-card/50 border-glass w-full sm:w-40">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Filter by sentiment" />
+            </SelectTrigger>
+            <SelectContent className="bg-card/90 backdrop-blur-lg border-glass">
+              <SelectItem value="all">All Sentiments</SelectItem>
+              <SelectItem value="positive">Positive</SelectItem>
+              <SelectItem value="neutral">Neutral</SelectItem>
+              <SelectItem value="negative">Negative</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-xl border border-glass bg-card/30 backdrop-blur-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gradient-card border-b border-glass">
+              <tr className="hover:bg-transparent">
+                <th className="text-left p-4 text-foreground font-semibold">Date</th>
+                <th className="text-left p-4 text-foreground font-semibold">Customer</th>
+                <th className="text-left p-4 text-foreground font-semibold">Rating</th>
+                <th className="text-left p-4 text-foreground font-semibold">Sentiment</th>
+                <th className="text-left p-4 text-foreground font-semibold">Feedback</th>
+                <th className="text-right p-4 text-foreground font-semibold">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedData.map((item) => (
+                <tr 
+                  key={item.id} 
+                  className="border-b border-glass/50 hover:bg-gradient-card/50 transition-colors"
+                >
+                  <td className="p-4 text-muted-foreground">
+                    {new Date(item.date).toLocaleDateString()}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-brand-gradient flex items-center justify-center text-white text-xs font-semibold">
+                        {item.customerName.charAt(0)}
+                      </div>
+                      <span className="font-medium">{item.customerName}</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <StarRating rating={item.rating} />
+                  </td>
+                  <td className="p-4">
+                    {getSentimentBadge(item.sentiment)}
+                  </td>
+                  <td className="p-4 max-w-xs">
+                    <p className="text-sm text-muted-foreground truncate">
+                      {item.feedback}
+                    </p>
+                  </td>
+                  <td className="p-4 text-right">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="hover:bg-gradient-card border border-transparent hover:border-glass"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredData.length)} of {filteredData.length} results
+          </p>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="bg-card/50 border-glass hover:bg-gradient-card"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            
+            <span className="text-sm px-3 py-1 bg-gradient-card border border-glass rounded-lg">
+              {currentPage} of {totalPages}
+            </span>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="bg-card/50 border-glass hover:bg-gradient-card"
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

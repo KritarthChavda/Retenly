@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id       String @id @default(cuid())
+  username String @unique
+  password String // Hashed password
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
+model Restaurant {
+  id       String @id @default(uuid())
+  name     String
+  username String @unique
+  password String // Hashed password
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  forms Form[]
+
+  @@map("restaurants")
+}
+
+model Form {
+  id              String   @id @default(cuid())
+  restaurantId    String
+  title           String
+  subtitle        String?  // Custom subtitle/welcome message
+  closingMessage  String?  // Custom thank you message
+  logoUrl         String?  // URL to uploaded logo
+  coverImageUrl   String?  // URL to uploaded cover image
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  questions  Question[]
+  feedbacks  Feedback[]
+  responses  Response[]
+
+  @@map("forms")
+}
+
+model Question {
+  id          String @id @default(cuid())
+  formId      String
+  questionText String
+  type        String // "text", "rating", "mcq"
+  options     String? // JSON string for MCQ options
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@map("questions")
+}
+
+model Feedback {
+  id          String   @id @default(cuid())
+  formId      String
+  name        String
+  phoneNumber String
+  experience  String   // "YO!", "Pretty good", "Okay-ish", "Not great"
+  feedback    String?  // Optional text feedback
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@map("feedbacks")
+}
+
+model Response {
+  id        String   @id @default(cuid())
+  formId    String
+  answers   String   // JSON string containing all form responses
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@map("responses")
+}

@@ -1,0 +1,7 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="64" fill="#F59E0B"/>
+  <path d="M32 48C32 38.1 40.1 30 50 30H78C87.9 30 96 38.1 96 48V80C96 89.9 87.9 98 78 98H50C40.1 98 32 89.9 32 80V48Z" fill="white"/>
+  <path d="M40 56C40 51.6 43.6 48 48 48H80C84.4 48 88 51.6 88 56V72C88 76.4 84.4 80 80 80H48C43.6 80 40 76.4 40 72V56Z" fill="#F59E0B"/>
+  <text x="64" y="68" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">DT</text>
+  <text x="64" y="88" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10">RAJKOT</text>
+</svg>
