@@ -1,4 +1,4 @@
-# Restaurant Feedback Form
+# Retenly
 
 A modern, responsive restaurant feedback form built with Next.js, Tailwind CSS, and Prisma ORM with PostgreSQL.
 
