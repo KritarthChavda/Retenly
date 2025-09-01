@@ -269,7 +269,7 @@ export default function FeedbackForm({
               type="submit"
               size="lg"
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-all duration-300 text-white font-semibold py-4 text-lg disabled:opacity-50 shadow-lg hover:shadow-xl"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-all duration-300 text-white font-semibold py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center">

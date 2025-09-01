@@ -7,6 +7,7 @@ import Link from 'next/link'
 interface Restaurant {
   id: string
   name: string
+  slug: string
 }
 
 /**
@@ -103,7 +104,7 @@ export default function CreateForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          restaurantId: selectedRestaurant,
+          restaurantSlug: selectedRestaurant,
           title: formTitle,
           subtitle: subtitle.trim() || null,
           closingMessage: closingMessage.trim() || null,
@@ -212,7 +213,7 @@ export default function CreateForm() {
               >
                 <option value="">Choose a restaurant</option>
                 {restaurants.map((restaurant) => (
-                  <option key={restaurant.id} value={restaurant.id}>
+                  <option key={restaurant.id} value={restaurant.slug}>
                     {restaurant.name}
                   </option>
                 ))}

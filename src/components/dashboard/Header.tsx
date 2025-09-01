@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState } from "react";
 import { Bell, ChevronDown, Menu, Settings, LogOut, BarChart3 } from "lucide-react";
@@ -13,6 +13,7 @@ interface HeaderProps {
 
 export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -67,11 +68,13 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
         {/* Logo & Brand */}
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center text-white font-bold text-sm">
-              R
-            </div>
-            <span className="text-xl font-bold bg-brand-gradient bg-clip-text text-transparent">
-              Restaurant Feedback
+            <img
+              src="/retently-logo.svg"
+              alt="Retenly"
+              className="w-16 h-8 object-contain"
+            />
+            <span className="text-xl font-bold text-foreground">
+              Retenly
             </span>
           </div>
 
@@ -91,7 +94,13 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
 
           {/* Restaurant Profile */}
           <div className="relative">
-            <Button variant="ghost" className="flex items-center gap-3 px-3 hover:bg-gradient-card border border-transparent hover:border-glass">
+            <Button
+              variant="ghost"
+              className="flex items-center gap-3 px-3 hover:bg-gradient-card border border-transparent hover:border-glass"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+            >
               <div className="flex items-center gap-3">
                 {restaurantLogo ? (
                   <img src={restaurantLogo} alt={restaurantName} className="w-8 h-8 rounded-lg object-cover" />
@@ -109,22 +118,24 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
             </Button>
             
             {/* Dropdown Menu */}
-            <div className="absolute right-0 top-full mt-2 w-56 bg-card/90 backdrop-blur-lg border border-glass rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-              <div className="p-2">
-                <Link href="/dashboard/settings" className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-gradient-card transition-colors">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Link>
-                <div className="h-px bg-border my-1"></div>
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-destructive hover:bg-gradient-negative/20 transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-card/90 backdrop-blur-lg border border-glass rounded-lg shadow-lg transition-all duration-200 z-50">
+                <div className="p-2">
+                  <Link href="/dashboard/settings" className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-gradient-card transition-colors">
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
+                  <div className="h-px bg-border my-1"></div>
+                  <button 
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-destructive hover:bg-gradient-negative/20 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Mobile Menu */}

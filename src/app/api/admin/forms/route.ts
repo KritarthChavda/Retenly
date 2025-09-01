@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -14,7 +16,8 @@ export async function GET(request: NextRequest) {
       include: {
         restaurant: {
           select: {
-            name: true
+            name: true,
+            slug: true
           }
         },
         _count: {
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { 
-      restaurantId, 
+      restaurantSlug, 
       title, 
       subtitle, 
       closingMessage, 
@@ -53,16 +56,16 @@ export async function POST(request: NextRequest) {
       questions 
     } = body
 
-    if (!restaurantId || !title || !questions || !Array.isArray(questions)) {
+    if (!restaurantSlug || !title || !questions || !Array.isArray(questions)) {
       return NextResponse.json(
-        { error: 'Restaurant ID, title, and questions array are required' },
+        { error: 'Restaurant slug, title, and questions array are required' },
         { status: 400 }
       )
     }
 
-    // Verify restaurant exists
+    // Verify restaurant exists by slug
     const restaurant = await prisma.restaurant.findUnique({
-      where: { id: restaurantId }
+      where: { slug: restaurantSlug }
     })
 
     if (!restaurant) {
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const form = await tx.form.create({
         data: {
-          restaurantId,
+          restaurantId: restaurant.id,
           title,
           subtitle: subtitle || null,
           closingMessage: closingMessage || null,

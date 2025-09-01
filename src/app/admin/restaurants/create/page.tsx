@@ -7,6 +7,7 @@ import Link from 'next/link'
 interface RestaurantCredentials {
   username: string
   password: string
+  emailSent?: boolean
 }
 
 /**
@@ -16,6 +17,7 @@ interface RestaurantCredentials {
  */
 export default function CreateRestaurant() {
   const [restaurantName, setRestaurantName] = useState('')
+  const [restaurantEmail, setRestaurantEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [credentials, setCredentials] = useState<RestaurantCredentials | null>(null)
@@ -32,7 +34,10 @@ export default function CreateRestaurant() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: restaurantName }),
+        body: JSON.stringify({ 
+          name: restaurantName,
+          email: restaurantEmail
+        }),
       })
 
       if (response.ok) {
@@ -91,6 +96,21 @@ export default function CreateRestaurant() {
                   onChange={(e) => setRestaurantName(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="Enter restaurant name"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="restaurantEmail" className="block text-sm font-medium text-gray-300 mb-2">
+                  Restaurant Email
+                </label>
+                <input
+                  type="email"
+                  id="restaurantEmail"
+                  value={restaurantEmail}
+                  onChange={(e) => setRestaurantEmail(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter restaurant email"
                   required
                 />
               </div>
@@ -175,6 +195,24 @@ export default function CreateRestaurant() {
               </p>
             </div>
 
+            {credentials.emailSent && (
+              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-6">
+                <h4 className="text-green-400 font-medium mb-2">📧 Email Sent</h4>
+                <p className="text-green-300 text-sm">
+                  Credentials have been sent to the restaurant owner's email address.
+                </p>
+              </div>
+            )}
+
+            {!credentials.emailSent && (
+              <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4 mb-6">
+                <h4 className="text-orange-400 font-medium mb-2">📧 Email Status</h4>
+                <p className="text-orange-300 text-sm">
+                  Email could not be sent. Please manually share the credentials with the restaurant owner.
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-4">
               <button
                 onClick={handleBackToDashboard}
@@ -186,6 +224,7 @@ export default function CreateRestaurant() {
                 onClick={() => {
                   setCredentials(null)
                   setRestaurantName('')
+                  setRestaurantEmail('')
                 }}
                 className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
               >

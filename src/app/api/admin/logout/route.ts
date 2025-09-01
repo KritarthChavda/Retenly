@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
@@ -14,12 +16,13 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
 
-    // Clear admin session cookie
-    response.cookies.set('admin-session', '', {
+    // Clear auth-token cookie (JWT system)
+    response.cookies.set('auth-token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 0 // Expire immediately
+      maxAge: 0, // Expire immediately
+      path: '/'
     })
 
     return response

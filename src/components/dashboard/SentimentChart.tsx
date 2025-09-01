@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react';
-import { Chart, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Chart, ArcElement, Tooltip, Legend, ChartOptions } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 
 Chart.register(ArcElement, Tooltip, Legend);
@@ -18,6 +18,9 @@ interface SentimentChartProps {
 }
 
 export const SentimentChart = ({ data }: SentimentChartProps) => {
+  const total = data.reduce((sum, item) => sum + item.value, 0)
+  
+  // Calculate percentages for each sentiment
   const chartData = {
     labels: data.map(item => item.name),
     datasets: [
@@ -30,64 +33,71 @@ export const SentimentChart = ({ data }: SentimentChartProps) => {
         cutout: '60%',
       },
     ],
-  };
+  }
 
-  const options = {
+  const options: ChartOptions<'doughnut'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'bottom' as const,
         labels: {
-          color: 'hsl(var(--foreground))',
+          color: '#e5e7eb',
           padding: 20,
           usePointStyle: true,
-          pointStyle: 'circle',
-          font: {
-            size: 12,
-          },
-        },
+          pointStyle: 'circle'
+        }
       },
       tooltip: {
-        backgroundColor: 'hsl(var(--card))',
-        titleColor: 'hsl(var(--foreground))',
-        bodyColor: 'hsl(var(--muted-foreground))',
-        borderColor: 'hsl(var(--border))',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#ffffff',
+        bodyColor: '#e5e7eb',
+        borderColor: '#374151',
         borderWidth: 1,
-        cornerRadius: 8,
-        displayColors: true,
         callbacks: {
-          label: function(context: any) {
-            const label = context.label || '';
-            const value = context.parsed;
-            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
-            const percentage = ((value / total) * 100).toFixed(1);
-            return `${label}: ${value} (${percentage}%)`;
-          },
-        },
-      },
+          label: function(context) {
+            const value = context.parsed
+            const percentage = total > 0 ? Math.round((value / total) * 100) : 0
+            return `${context.label}: ${value} (${percentage}%)`
+          }
+        }
+      }
     },
     animation: {
       animateRotate: true,
       animateScale: true,
-      duration: 1000,
-      easing: 'easeOutQuart',
-    },
-  };
+      easing: 'easeOutQuart' as const
+    }
+  }
 
   return (
     <div className="w-full h-80 relative">
-      <Doughnut data={chartData} options={options} />
-      
-      {/* Center text */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-foreground">
-            {data.reduce((sum, item) => sum + item.value, 0)}
+      {total > 0 ? (
+        <>
+          <Doughnut data={chartData} options={options} />
+          
+          {/* Center text */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-foreground">
+                {total}
+              </div>
+              <div className="text-sm text-muted-foreground">Total</div>
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground">Total</div>
+        </>
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-muted-foreground">
+              No feedback yet
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Start collecting customer feedback to see insights here
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

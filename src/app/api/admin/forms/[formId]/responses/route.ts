@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 /**
- * GET: Fetch all responses for a specific form
+ * GET: Fetch all responses for a specific restaurant's form
  * 
  * @param request - The incoming request
- * @param params - Route parameters containing formId
+ * @param params - Route parameters containing restaurant slug
  * @returns NextResponse with responses data
  */
 export async function GET(
@@ -13,42 +13,45 @@ export async function GET(
   { params }: { params: Promise<{ formId: string }> }
 ) {
   try {
-    const { formId } = await params
+    const { formId: restaurantSlug } = await params
 
-    if (!formId) {
+    if (!restaurantSlug) {
       return NextResponse.json(
-        { error: 'Form ID is required' },
+        { error: 'Restaurant slug is required' },
         { status: 400 }
       )
     }
 
-    // Verify form exists
-    const form = await prisma.form.findUnique({
-      where: { id: formId },
+    // Find the restaurant by slug and get its most recent form
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { slug: restaurantSlug },
       include: {
-        restaurant: {
-          select: {
-            name: true
-          }
-        },
-        questions: {
-          orderBy: {
-            createdAt: 'asc'
+        forms: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            questions: {
+              orderBy: {
+                createdAt: 'asc'
+              }
+            }
           }
         }
       }
     })
 
-    if (!form) {
+    if (!restaurant || restaurant.forms.length === 0) {
       return NextResponse.json(
-        { error: 'Form not found' },
+        { error: 'Form not found for this restaurant' },
         { status: 404 }
       )
     }
 
-    // Fetch responses
+    const form = restaurant.forms[0]
+
+    // Fetch responses for this form
     const responses = await prisma.response.findMany({
-      where: { formId },
+      where: { formId: form.id },
       orderBy: {
         createdAt: 'desc'
       }
@@ -61,7 +64,12 @@ export async function GET(
     }))
 
     return NextResponse.json({
-      form,
+      form: {
+        ...form,
+        restaurant: {
+          name: restaurant.name
+        }
+      },
       responses: responsesWithAnswers
     })
   } catch (error) {

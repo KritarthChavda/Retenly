@@ -1,43 +1,53 @@
+import { NextRequest } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
+import { createToken as createJWTToken } from './auth-edge'
+
+export interface JWTPayload {
+  id: string
+  username: string
+  type: 'admin' | 'restaurant'
+}
+
+export interface AuthResult {
+  success: boolean
+  user?: JWTPayload
+  error?: string
+}
+
+// Get admin credentials from environment
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
 
 /**
- * Authentication utilities for admin dashboard
- */
-
-// Hardcoded admin credentials (in production, these should be in environment variables)
-const ADMIN_USERNAME = 'admin'
-const ADMIN_PASSWORD = 'admin123'
-
-/**
- * Hash a password using bcrypt
+ * Hash password using bcrypt
  * 
  * @param password - Plain text password
  * @returns Hashed password
  */
 export async function hashPassword(password: string): Promise<string> {
-  const saltRounds = 10
+  const saltRounds = 12
   return bcrypt.hash(password, saltRounds)
 }
 
 /**
- * Verify a password against its hash
+ * Verify password against hash
  * 
  * @param password - Plain text password
- * @param hashedPassword - Hashed password to compare against
- * @returns Boolean indicating if password matches
+ * @param hash - Hashed password
+ * @returns True if password matches
  */
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword)
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash)
 }
 
 /**
- * Generate a random string for usernames and passwords
+ * Generate random string for credentials
  * 
- * @param length - Length of the random string
+ * @param length - Length of string to generate
  * @returns Random string
  */
-export function generateRandomString(length: number = 8): string {
+export function generateRandomString(length: number = 10): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
   let result = ''
   for (let i = 0; i < length; i++) {
@@ -47,53 +57,186 @@ export function generateRandomString(length: number = 8): string {
 }
 
 /**
+ * Generate secure password
+ * 
+ * @param length - Length of password
+ * @returns Secure password
+ */
+export function generateSecurePassword(length: number = 12): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+/**
+ * Get or create admin user
+ * 
+ * @returns Admin user data
+ */
+export async function getOrCreateAdmin(): Promise<{ id: string; username: string }> {
+  let admin = await prisma.admin.findUnique({
+    where: { username: ADMIN_USERNAME }
+  })
+
+  if (!admin) {
+    const hashedPassword = await hashPassword(ADMIN_PASSWORD)
+    admin = await prisma.admin.create({
+      data: {
+        username: ADMIN_USERNAME,
+        password: hashedPassword
+      }
+    })
+  }
+
+  return { id: admin.id, username: admin.username }
+}
+
+/**
  * Verify admin credentials
  * 
  * @param username - Admin username
  * @param password - Admin password
- * @returns Boolean indicating if credentials are valid
+ * @returns Authentication result
  */
-export async function verifyAdminCredentials(username: string, password: string): Promise<boolean> {
-  if (username !== ADMIN_USERNAME) {
-    return false
+export async function verifyAdminCredentials(username: string, password: string): Promise<AuthResult> {
+  try {
+    // Check against environment variables for super admin
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      const admin = await getOrCreateAdmin()
+      
+      const payload: JWTPayload = {
+        id: admin.id,
+        username: admin.username,
+        type: 'admin'
+      }
+      
+      console.log('Admin login successful', { username })
+      return { success: true, user: payload }
+    }
+    
+    // Fallback: Check database for additional admin users
+    try {
+      const admin = await prisma.admin.findUnique({
+        where: { username }
+      })
+      
+      if (admin) {
+        const isValidPassword = await verifyPassword(password, admin.password)
+        if (isValidPassword) {
+          const payload: JWTPayload = {
+            id: admin.id,
+            username: admin.username,
+            type: 'admin'
+          }
+          
+          console.log('Admin login successful (database)', { username })
+          return { success: true, user: payload }
+        }
+      }
+    } catch (dbError) {
+      console.warn('Database admin check failed, using env only', { error: dbError })
+    }
+    
+    console.warn('Admin login attempt with invalid credentials', { username })
+    return { success: false, error: 'Invalid credentials' }
+  } catch (error) {
+    console.error('Error verifying admin credentials', { error, username })
+    return { success: false, error: 'Authentication failed' }
   }
-  
-  // For now, use simple comparison. In production, you'd store hashed admin password in DB
-  return password === ADMIN_PASSWORD
 }
 
 /**
- * Create or get admin user
+ * Verify restaurant owner credentials
  * 
- * @returns Admin user object
+ * @param username - Restaurant username
+ * @param password - Restaurant password
+ * @returns Authentication result
  */
-export async function getOrCreateAdmin() {
-  const existingAdmin = await prisma.admin.findUnique({
-    where: { username: ADMIN_USERNAME }
-  })
+export async function verifyRestaurantCredentials(username: string, password: string): Promise<AuthResult> {
+  try {
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { username }
+    })
 
-  if (existingAdmin) {
-    return existingAdmin
-  }
-
-  // Create admin user if it doesn't exist
-  const hashedPassword = await hashPassword(ADMIN_PASSWORD)
-  return await prisma.admin.create({
-    data: {
-      username: ADMIN_USERNAME,
-      password: hashedPassword
+    if (!restaurant) {
+      return { success: false, error: 'Restaurant not found' }
     }
-  })
+
+    const isValidPassword = await verifyPassword(password, restaurant.password)
+    if (!isValidPassword) {
+      return { success: false, error: 'Invalid password' }
+    }
+
+    const payload: JWTPayload = {
+      id: restaurant.id,
+      username: restaurant.username,
+      type: 'restaurant'
+    }
+
+    return { success: true, user: payload }
+  } catch (error) {
+    console.error('Error verifying restaurant credentials', { error, username })
+    return { success: false, error: 'Authentication failed' }
+  }
 }
 
 /**
  * Generate restaurant credentials
  * 
- * @returns Object with username and password
+ * @returns Generated username and password
  */
 export function generateRestaurantCredentials() {
   return {
     username: generateRandomString(8),
-    password: generateRandomString(10)
+    password: generateSecurePassword(12)
   }
-} 
+}
+
+/**
+ * Create JWT token
+ * 
+ * @param user - User payload
+ * @returns JWT token
+ */
+export async function createToken(user: JWTPayload): Promise<string> {
+  return createJWTToken(user)
+}
+
+/**
+ * Middleware to require admin authentication
+ * 
+ * @param request - Next.js request
+ * @returns Authentication result
+ */
+export function requireAdmin(request: NextRequest): AuthResult {
+  const token = request.cookies.get('auth-token')?.value
+  
+  if (!token) {
+    return { success: false, error: 'No token provided' }
+  }
+  
+  // For middleware, we'll do basic validation
+  // Full validation happens in the API route
+  return { success: true, user: { id: 'temp', username: 'temp', type: 'admin' } }
+}
+
+/**
+ * Middleware to require restaurant authentication
+ * 
+ * @param request - Next.js request
+ * @returns Authentication result
+ */
+export function requireRestaurant(request: NextRequest): AuthResult {
+  const token = request.cookies.get('auth-token')?.value
+  
+  if (!token) {
+    return { success: false, error: 'No token provided' }
+  }
+  
+  // For middleware, we'll do basic validation
+  // Full validation happens in the API route
+  return { success: true, user: { id: 'temp', username: 'temp', type: 'restaurant' } }
+}

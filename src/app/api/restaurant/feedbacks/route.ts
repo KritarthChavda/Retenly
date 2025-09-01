@@ -1,5 +1,14 @@
+export const runtime = 'nodejs'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { 
+  analyzeFeedbackExperience, 
+  extractRatingFromAnswers,
+  extractCustomerName,
+  extractFeedbackText,
+  extractPhoneNumber 
+} from '@/lib/sentiment'
 
 /**
  * GET: Fetch all feedback data for restaurant dashboard table
@@ -9,17 +18,18 @@ import { prisma } from '@/lib/prisma'
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get restaurant ID from session cookie
-    const restaurantSession = request.cookies.get('restaurant-session')
+    // Get restaurant ID from JWT token in headers (set by middleware)
+    const userId = request.headers.get('x-user-id')
+    const userType = request.headers.get('x-user-type')
     
-    if (!restaurantSession) {
+    if (!userId || userType !== 'restaurant') {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const restaurantId = restaurantSession.value
+    const restaurantId = userId
 
     // Verify restaurant exists
     const restaurant = await prisma.restaurant.findUnique({
@@ -91,31 +101,51 @@ export async function GET(request: NextRequest) {
 
     // Combine and format data
     const allFeedbackData = [
-      ...feedbacks.map(feedback => ({
-        id: feedback.id,
-        type: 'feedback',
-        formTitle: feedback.form.title,
-        formId: feedback.form.id,
-        name: feedback.name,
-        phoneNumber: feedback.phoneNumber,
-        experience: feedback.experience,
-        feedback: feedback.feedback,
-        createdAt: feedback.createdAt,
-        sentiment: getSentiment(feedback.experience)
-      })),
+      ...feedbacks.map(feedback => {
+        // Calculate rating and sentiment from experience using utility function
+        const { rating, sentiment } = analyzeFeedbackExperience(feedback.experience)
+        
+        return {
+          id: feedback.id,
+          type: 'feedback',
+          formTitle: feedback.form.title,
+          formId: feedback.form.id,
+          name: feedback.name,
+          phoneNumber: feedback.phoneNumber,
+          experience: feedback.experience,
+          feedback: feedback.feedback,
+          rating: rating,
+          createdAt: feedback.createdAt,
+          sentiment: sentiment
+        }
+      }),
       ...responses.map(response => {
         const answers = JSON.parse(response.answers)
+        
+        // Extract readable name from answers
+        const customerName = extractCustomerName(answers)
+        
+        // Extract readable feedback text from answers
+        const feedbackText = extractFeedbackText(answers)
+        
+        // Extract rating from answers and calculate sentiment
+        const rating = extractRatingFromAnswers(answers)
+        const { sentiment } = rating >= 4 ? { sentiment: 'positive' } : 
+                             rating === 3 ? { sentiment: 'neutral' } : 
+                             { sentiment: 'negative' }
+        
         return {
           id: response.id,
           type: 'response',
           formTitle: response.form.title,
           formId: response.form.id,
-          name: 'Anonymous',
-          phoneNumber: 'N/A',
+          name: customerName,
+          phoneNumber: extractPhoneNumber(answers),
           experience: 'N/A',
-          feedback: JSON.stringify(answers),
+          feedback: feedbackText,
+          rating: rating,
           createdAt: response.createdAt,
-          sentiment: getSentimentFromAnswers(answers)
+          sentiment: sentiment
         }
       })
     ]
@@ -133,9 +163,7 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      feedbacks: allFeedbackData,
-      forms,
-      totalCount: allFeedbackData.length
+      feedbacks: allFeedbackData
     })
   } catch (error) {
     console.error('Error fetching feedbacks:', error)
@@ -146,42 +174,4 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * Helper function to get sentiment from experience rating
- * 
- * @param experience - The experience rating
- * @returns Sentiment string
- */
-function getSentiment(experience: string): string {
-  switch (experience) {
-    case 'YO!':
-    case 'Pretty good':
-      return 'Positive'
-    case 'Okay-ish':
-      return 'Neutral'
-    case 'Not great':
-      return 'Negative'
-    default:
-      return 'Unknown'
-  }
-}
-
-/**
- * Helper function to get sentiment from response answers
- * 
- * @param answers - The response answers object
- * @returns Sentiment string
- */
-function getSentimentFromAnswers(answers: Record<string, any>): string {
-  const ratings = Object.values(answers).filter((value): value is number => 
-    typeof value === 'number' && value >= 1 && value <= 5
-  )
-  
-  if (ratings.length === 0) return 'Unknown'
-  
-  const avgRating = ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
-  
-  if (avgRating >= 4) return 'Positive'
-  if (avgRating >= 3) return 'Neutral'
-  return 'Negative'
-} 
+ 

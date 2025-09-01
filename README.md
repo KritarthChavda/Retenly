@@ -1,23 +1,43 @@
-# Retenly
+# Restaurant Feedback Form
 
-A modern, responsive restaurant feedback form built with Next.js, Tailwind CSS, and Prisma ORM with PostgreSQL.
+A comprehensive, multi-tenant restaurant feedback platform built with modern technologies and production-ready architecture.
 
-## Features
+## 🚀 Features
 
-- 🎨 Dark theme with modern, friendly design
-- 📱 Fully responsive and mobile-friendly
-- ✅ Form validation with real-time error feedback
-- 🎭 Fun emojis and casual tone matching restaurant branding
-- 💾 PostgreSQL database integration with Prisma ORM
-- 🚀 Next.js API routes for backend functionality
-- ⚡ Fast and optimized with TypeScript
+### Core Platform
+- 🏢 **Multi-tenant architecture** - Support for multiple restaurants
+- 🔐 **Secure authentication** - JWT-based auth for admins and restaurant owners
+- 📊 **Advanced analytics** - Sentiment analysis, rating calculations, trend tracking
+- 📧 **Email notifications** - Automated credential delivery to restaurant owners
+- 🛡️ **Production security** - Input validation, XSS protection, rate limiting
 
-## Tech Stack
+### Admin Dashboard
+- 👥 **Restaurant management** - Create, manage multiple restaurants
+- 📈 **System analytics** - Platform-wide statistics and insights
+- 🔑 **Credential management** - Secure password generation and delivery
+- 📋 **Form management** - Create and customize feedback forms
 
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **Styling**: Tailwind CSS 4
-- **Database**: PostgreSQL with Prisma ORM
-- **Deployment**: Ready for Vercel, Railway, or any Node.js hosting
+### Restaurant Dashboard
+- 📊 **Real-time analytics** - Feedback sentiment, ratings, trends
+- 📝 **Feedback management** - View and analyze customer responses
+- 🎨 **Form customization** - Branded forms with logos and custom messages
+- 📱 **Mobile-optimized** - Responsive design for all devices
+
+### Customer Experience
+- 🌐 **Dynamic routing** - Clean URLs like retenly.in/forms/restaurant-name
+- 🚫 **Duplicate prevention** - Smart detection to prevent spam submissions
+- ✅ **Input validation** - Real-time validation with helpful error messages
+- 🎯 **Thank you pages** - Customized confirmation experiences
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS 4
+- **Backend**: Next.js API routes, JWT authentication, Prisma ORM
+- **Database**: PostgreSQL with connection pooling
+- **Email**: Nodemailer with SMTP support
+- **Logging**: Pino structured logging
+- **Security**: bcrypt, input sanitization, CORS protection
+- **Deployment**: Vercel (frontend), Supabase (database)
 
 ## Getting Started
 
@@ -27,47 +47,47 @@ A modern, responsive restaurant feedback form built with Next.js, Tailwind CSS, 
 - PostgreSQL database (local or cloud)
 - npm or yarn
 
-### Installation
+### Quick Start
 
-1. **Clone the repository**
+1. **Clone and install**
    ```bash
    git clone <repository-url>
    cd restaurant-feedback
-   ```
-
-2. **Install dependencies**
-   ```bash
    npm install
    ```
 
-3. **Set up environment variables**
-   Create a `.env` file in the root directory:
+2. **Environment setup**
+   Copy `env.example` to `.env` and configure:
+   ```bash
+   cp env.example .env
+   ```
+   
+   **Required variables:**
    ```env
    DATABASE_URL="postgresql://username:password@localhost:5432/restaurant_feedback"
+   JWT_SECRET="your-256-bit-secret-key"
+   ADMIN_USERNAME="admin"
+   ADMIN_PASSWORD="secure-password"
+   SMTP_USER="your-email@gmail.com"
+   SMTP_PASS="your-app-password"
    ```
 
-   **Database Options:**
-   - **Local PostgreSQL**: Install PostgreSQL locally
-   - **Supabase**: Free tier available at [supabase.com](https://supabase.com)
-   - **Neon**: Serverless PostgreSQL at [neon.tech](https://neon.tech)
-   - **Railway**: Easy deployment at [railway.app](https://railway.app)
-
-4. **Set up the database**
+3. **Database setup**
    ```bash
-   # Generate Prisma client
    npx prisma generate
-   
-   # Run database migrations
-   npx prisma migrate dev --name init
+   npx prisma migrate dev
+   npm run setup  # Creates admin user
    ```
 
-5. **Start the development server**
+4. **Start development**
    ```bash
    npm run dev
    ```
 
-6. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+5. **Access the platform**
+   - Main site: http://localhost:3000
+   - Admin dashboard: http://localhost:3000/admin
+   - Restaurant login: http://localhost:3000/restaurant/login
 
 ## Form Fields
 

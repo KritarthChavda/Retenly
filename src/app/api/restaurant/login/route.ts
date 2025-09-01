@@ -1,19 +1,19 @@
+export const runtime = 'nodejs'
+
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { verifyPassword } from '@/lib/auth'
+import { verifyRestaurantCredentials, createToken } from '@/lib/auth'
 
 /**
  * Restaurant login API endpoint
  * 
- * @param request - The incoming request with login credentials
- * @returns NextResponse with success/error status and session cookie
+ * @param request - The incoming request
+ * @returns NextResponse with authentication result
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { username, password } = body
 
-    // Validate required fields
     if (!username || !password) {
       return NextResponse.json(
         { error: 'Username and password are required' },
@@ -21,47 +21,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find restaurant by username
-    const restaurant = await prisma.restaurant.findUnique({
-      where: { username }
-    })
+    // Verify restaurant credentials
+    const authResult = await verifyRestaurantCredentials(username, password)
 
-    if (!restaurant) {
+    if (!authResult.success || !authResult.user) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: authResult.error || 'Invalid credentials' },
         { status: 401 }
       )
     }
 
-    // Verify password
-    const isValidPassword = await verifyPassword(password, restaurant.password)
+    // Create JWT token
+    const token = await createToken(authResult.user)
 
-    if (!isValidPassword) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      )
-    }
-
-    // Create response with success message
+    // Create response
     const response = NextResponse.json(
       { 
         message: 'Login successful',
-        restaurant: {
-          id: restaurant.id,
-          name: restaurant.name,
-          username: restaurant.username
+        user: {
+          id: authResult.user.id,
+          username: authResult.user.username,
+          type: authResult.user.type
         }
       },
       { status: 200 }
     )
 
-    // Set restaurant session cookie
-    response.cookies.set('restaurant-session', restaurant.id, {
+    // Set secure authentication cookie
+    response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24 // 24 hours
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/'
     })
 
     return response
@@ -72,4 +64,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}

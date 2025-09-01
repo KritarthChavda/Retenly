@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "name": "retenly",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/forms/([^/]+)",
+      "dest": "/forms/[slug]"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "/admin/$1"
+    },
+    {
+      "src": "/restaurant/(.*)",
+      "dest": "/restaurant/$1"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "JWT_SECRET": "@jwt_secret",
+    "NEXTAUTH_SECRET": "@nextauth_secret",
+    "ADMIN_USERNAME": "@admin_username",
+    "ADMIN_PASSWORD": "@admin_password",
+    "SMTP_HOST": "@smtp_host",
+    "SMTP_PORT": "@smtp_port",
+    "SMTP_USER": "@smtp_user",
+    "SMTP_PASS": "@smtp_pass",
+    "FROM_EMAIL": "@from_email",
+    "FROM_NAME": "Retenly"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}

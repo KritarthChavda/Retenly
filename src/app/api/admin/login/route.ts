@@ -1,55 +1,92 @@
+export const runtime = 'nodejs'
+
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdminCredentials } from '@/lib/auth'
+import { verifyAdminCredentials, createToken } from '@/lib/auth'
+import { loginSchema } from '@/lib/validation'
+import { logger } from '@/lib/logger'
 
 /**
- * Admin login API endpoint
- * 
- * @param request - The incoming request with login credentials
- * @returns NextResponse with success/error status and session cookie
+ * Production-ready admin login API endpoint with JWT authentication
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  
   try {
     const body = await request.json()
-    const { username, password } = body
-
-    // Validate required fields
-    if (!username || !password) {
+    
+    // Validate input
+    const validation = loginSchema.safeParse(body)
+    if (!validation.success) {
+      logger.warn({ 
+        errors: validation.error.errors,
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+      }, 'Admin login validation failed')
       return NextResponse.json(
-        { error: 'Username and password are required' },
+        { error: 'Invalid input', details: validation.error.errors },
         { status: 400 }
       )
     }
 
-    // Verify admin credentials
-    const isValid = await verifyAdminCredentials(username, password)
+    const { username, password } = validation.data
 
-    if (!isValid) {
+    // Verify admin credentials
+    const authResult = await verifyAdminCredentials(username, password)
+
+    if (!authResult.success || !authResult.user) {
+      logger.warn({ 
+        username, 
+        error: authResult.error,
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        userAgent: request.headers.get('user-agent')
+      }, 'Admin login failed')
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: authResult.error || 'Invalid credentials' },
         { status: 401 }
       )
     }
 
-    // Create response with success message
+    // Create JWT token
+    const token = await createToken(authResult.user)
+
+    // Create response
     const response = NextResponse.json(
-      { message: 'Login successful' },
+      { 
+        message: 'Login successful',
+        user: {
+          id: authResult.user.id,
+          username: authResult.user.username,
+          type: authResult.user.type
+        }
+      },
       { status: 200 }
     )
 
-    // Set admin session cookie
-    response.cookies.set('admin-session', 'authenticated', {
+    // Set secure authentication cookie
+    response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24 // 24 hours
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/'
     })
+
+    logger.info({ 
+      username,
+      userId: authResult.user.id,
+      duration: Date.now() - startTime,
+      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    }, 'Admin login successful')
 
     return response
   } catch (error) {
-    console.error('Login error:', error)
+    logger.error({ 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      duration: Date.now() - startTime,
+      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    }, 'Admin login error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
-} 
+}

@@ -71,48 +71,48 @@ export default function AllFeedback() {
 
   const fetchAllFeedback = async () => {
     try {
-      // Fetch restaurant info
-      const restaurantResponse = await fetch('/api/restaurant/dashboard');
+      // Fetch restaurant info first
+      const restaurantResponse = await fetch('/api/restaurant/dashboard')
       if (restaurantResponse.ok) {
-        const restaurantData = await restaurantResponse.json();
-        setRestaurant(restaurantData.restaurant);
+        const restaurantData = await restaurantResponse.json()
+        setRestaurant(restaurantData.restaurant)
       }
 
       // Fetch all feedback
-      const feedbackResponse = await fetch('/api/restaurant/feedbacks');
-      if (feedbackResponse.ok) {
-        const feedbackData = await feedbackResponse.json();
-        // Transform feedback data to match our interface
-        const transformedFeedback = (feedbackData.feedbacks || []).map((feedback: any) => ({
-          id: feedback.id,
-          date: feedback.createdAt || feedback.date,
-          customerName: feedback.name || feedback.customerName || 'Unknown Customer',
-          phone: feedback.phoneNumber || feedback.phone || 'N/A',
-          rating: feedback.rating || 3,
-          feedback: feedback.text || feedback.feedback || '',
-          sentiment: feedback.sentiment || 'neutral',
-          tags: feedback.tags || []
+      const response = await fetch('/api/restaurant/feedbacks')
+      if (response.ok) {
+        const data = await response.json()
+        // Transform feedback data to ensure all properties exist
+        const transformedFeedback = (data.feedbacks || []).map((f: any) => ({
+          id: f.id,
+          date: f.createdAt,
+          customerName: f.name || 'Unknown Customer',
+          phone: f.phoneNumber || 'N/A',
+          feedback: f.feedback || 'No text feedback',
+          rating: f.rating || 3,
+          sentiment: f.sentiment?.toLowerCase() || 'neutral',
+          tags: []
         }));
-        setAllFeedback(transformedFeedback);
+        setAllFeedback(transformedFeedback)
       }
     } catch (error) {
-      console.error('Error fetching feedback:', error);
+      console.error('Error fetching feedback:', error)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Filter feedback based on search and filters
-  const filteredFeedback = allFeedback.filter((item) => {
-    const matchesSearch = 
+  const filteredFeedback = allFeedback.filter(item => {
+    const matchesSearch = searchTerm === '' || 
       (item.customerName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (item.feedback?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+      (item.feedback?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     
-    const matchesSentiment = sentimentFilter === "all" || item.sentiment === sentimentFilter;
-    const matchesRating = ratingFilter === "all" || (item.rating?.toString() || '') === ratingFilter;
-
-    return matchesSearch && matchesSentiment && matchesRating;
-  });
+    const matchesSentiment = sentimentFilter === 'all' || item.sentiment === sentimentFilter
+    const matchesRating = ratingFilter === 'all' || item.rating === parseInt(ratingFilter)
+    
+    return matchesSearch && matchesSentiment && matchesRating
+  })
 
   // Pagination
   const totalPages = Math.ceil(filteredFeedback.length / itemsPerPage);
@@ -175,7 +175,7 @@ export default function AllFeedback() {
     <div className="min-h-screen bg-background">
       <Header 
         restaurantName={restaurant.name}
-        restaurantLogo={undefined}
+        restaurantLogo={(restaurant as any)?.logoUrl as any}
       />
       
       <main className="container mx-auto px-6 py-8 space-y-8">

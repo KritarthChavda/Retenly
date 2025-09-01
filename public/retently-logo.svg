@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="64" viewBox="0 0 128 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Purple bar -->
+  <rect x="24" y="8" width="80" height="8" rx="4" fill="#6A3FFB"/>
+  
+  <!-- Retenly text -->
+  <text x="64" y="48" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="white">Retenly</text>
+</svg>
+

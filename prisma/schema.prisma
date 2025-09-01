@@ -27,6 +27,8 @@ model Admin {
 model Restaurant {
   id       String @id @default(uuid())
   name     String
+  slug     String @unique // URL-friendly restaurant name
+  email    String // Restaurant owner's email for credentials
   username String @unique
   password String // Hashed password
   createdAt DateTime @default(now())
@@ -80,6 +82,8 @@ model Feedback {
   phoneNumber String
   experience  String   // "YO!", "Pretty good", "Okay-ish", "Not great"
   feedback    String?  // Optional text feedback
+  sentiment   String   @default("neutral") // "positive", "neutral", "negative"
+  rating      Int?     // Numeric rating (1-5)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

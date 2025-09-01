@@ -18,6 +18,7 @@ interface Form {
   title: string
   restaurant: {
     name: string
+    slug: string
   }
   _count: {
     questions: number
@@ -50,12 +51,18 @@ export default function AdminDashboard() {
 
       if (restaurantsRes.ok) {
         const restaurantsData = await restaurantsRes.json()
-        setRestaurants(restaurantsData.restaurants)
+        console.log('Restaurants data:', restaurantsData)
+        setRestaurants(restaurantsData.restaurants || [])
+      } else {
+        console.error('Failed to fetch restaurants:', restaurantsRes.status)
       }
 
       if (formsRes.ok) {
         const formsData = await formsRes.json()
-        setForms(formsData.forms)
+        console.log('Forms data:', formsData)
+        setForms(formsData.forms || [])
+      } else {
+        console.error('Failed to fetch forms:', formsRes.status)
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -137,7 +144,7 @@ export default function AdminDashboard() {
                         <h3 className="text-white font-medium">{restaurant.name}</h3>
                         <p className="text-gray-400 text-sm">Username: {restaurant.username}</p>
                         <p className="text-gray-400 text-sm">
-                          Forms: {restaurant._count.forms}
+                          Forms: {restaurant._count?.forms || 0}
                         </p>
                       </div>
                       <span className="text-xs text-gray-500">
@@ -166,28 +173,28 @@ export default function AdminDashboard() {
                       <div>
                         <h3 className="text-white font-medium">{form.title}</h3>
                         <p className="text-gray-400 text-sm">
-                          Restaurant: {form.restaurant.name}
+                          Restaurant: {form.restaurant?.name || 'Unknown'}
                         </p>
-                                                 <p className="text-gray-400 text-sm">
-                           Questions: {form._count.questions} | 
-                           Responses: {form._count.responses}
-                         </p>
-                         <div className="flex gap-2 text-sm">
-                           <a 
-                             href={`/forms/${form.id}`} 
-                             target="_blank" 
-                             rel="noopener noreferrer"
-                             className="text-purple-400 hover:text-purple-300 underline"
-                           >
-                             View Form →
-                           </a>
-                           <a 
-                             href={`/admin/forms/${form.id}/responses`}
-                             className="text-green-400 hover:text-green-300 underline"
-                           >
-                             View Responses →
-                           </a>
-                         </div>
+                        <p className="text-gray-400 text-sm">
+                          Questions: {form._count?.questions || 0} | 
+                          Responses: {form._count?.responses || 0}
+                        </p>
+                        <div className="flex gap-2 text-sm">
+                          <a 
+                            href={`/forms/${form.restaurant?.slug || 'unknown'}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-purple-400 hover:text-purple-300 underline"
+                          >
+                            View Form →
+                          </a>
+                          <a 
+                            href={`/admin/forms/${form.id}/responses`}
+                            className="text-green-400 hover:text-green-300 underline"
+                          >
+                            View Responses →
+                          </a>
+                        </div>
                       </div>
                       <span className="text-xs text-gray-500">
                         {new Date(form.createdAt).toLocaleDateString()}

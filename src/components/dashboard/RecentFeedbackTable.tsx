@@ -1,16 +1,10 @@
 'use client'
 
-import { useState } from "react";
-import { Eye, Search, Filter, ChevronLeft, ChevronRight, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useState } from 'react'
+import { Search, Star, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 
 interface FeedbackItem {
   id: string;
@@ -25,22 +19,20 @@ interface RecentFeedbackTableProps {
   data: FeedbackItem[];
 }
 
-export const RecentFeedbackTable = ({ data }: RecentFeedbackTableProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sentimentFilter, setSentimentFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
-  // Filter data based on search and sentiment
-  const filteredData = data.filter((item) => {
-    const matchesSearch = 
-      (item.customerName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (item.feedback?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    
-    const matchesSentiment = sentimentFilter === "all" || item.sentiment === sentimentFilter;
-    
-    return matchesSearch && matchesSentiment;
-  });
+  // Filter data based on search term
+  const filteredData = data.filter(item => {
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      (item.customerName?.toLowerCase() || '').includes(searchLower) ||
+      (item.feedback?.toLowerCase() || '').includes(searchLower) ||
+      item.sentiment?.toLowerCase().includes(searchLower)
+    )
+  })
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -94,29 +86,16 @@ export const RecentFeedbackTable = ({ data }: RecentFeedbackTableProps) => {
         <h2 className="text-2xl font-bold">Recent Feedback</h2>
         
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               placeholder="Search feedback..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-card/50 border-glass w-full sm:w-64"
+              className="pl-10 bg-card/50 border-glass"
             />
           </div>
-          
-          <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
-            <SelectTrigger className="bg-card/50 border-glass w-full sm:w-40">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Filter by sentiment" />
-            </SelectTrigger>
-            <SelectContent className="bg-card/90 backdrop-blur-lg border-glass">
-              <SelectItem value="all">All Sentiments</SelectItem>
-              <SelectItem value="positive">Positive</SelectItem>
-              <SelectItem value="neutral">Neutral</SelectItem>
-              <SelectItem value="negative">Negative</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 

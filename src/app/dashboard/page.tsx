@@ -24,6 +24,7 @@ interface Analytics {
   csatScore: number
   npsScore: number
   mostLovedFeature: string
+  averageRating: number
 }
 
 interface Feedback {
@@ -80,13 +81,16 @@ export default function RestaurantDashboard() {
       if (feedbackResponse.ok) {
         const feedbackData = await feedbackResponse.json()
         // Transform feedback data to ensure all properties exist
-        const transformedFeedback = (feedbackData.feedbacks || []).map((feedback: any) => ({
-          ...feedback,
-          name: feedback.name || 'Unknown Customer',
-          text: feedback.text || feedback.feedback || '',
-          rating: feedback.rating || 3,
-          sentiment: feedback.sentiment || 'neutral'
-        }));
+        const transformedFeedback = (feedbackData.feedbacks || []).map((f: any) => {
+          // The API now returns properly formatted data with rating and sentiment
+          return {
+            ...f,
+            name: f.name || 'Unknown Customer',
+            text: f.feedback || '',
+            rating: f.rating || 3,
+            sentiment: f.sentiment?.toLowerCase() || 'neutral'
+          };
+        });
         setRecentFeedbacks(transformedFeedback)
       }
     } catch (error) {
@@ -128,9 +132,24 @@ export default function RestaurantDashboard() {
 
   // Transform data for the new components
   const sentimentChartData = [
-    { name: "Positive", value: analytics.sentimentData.positive, percentage: Math.round((analytics.sentimentData.positive / analytics.totalFeedbackCount) * 100), color: "#10b981" },
-    { name: "Neutral", value: analytics.sentimentData.neutral, percentage: Math.round((analytics.sentimentData.neutral / analytics.totalFeedbackCount) * 100), color: "#f59e0b" },
-    { name: "Negative", value: analytics.sentimentData.negative, percentage: Math.round((analytics.sentimentData.negative / analytics.totalFeedbackCount) * 100), color: "#ef4444" },
+    { 
+      name: "Positive", 
+      value: analytics.sentimentData.positive, 
+      percentage: analytics.totalFeedbackCount > 0 ? Math.round((analytics.sentimentData.positive / analytics.totalFeedbackCount) * 100) : 0, 
+      color: "#10b981" 
+    },
+    { 
+      name: "Neutral", 
+      value: analytics.sentimentData.neutral, 
+      percentage: analytics.totalFeedbackCount > 0 ? Math.round((analytics.sentimentData.neutral / analytics.totalFeedbackCount) * 100) : 0, 
+      color: "#f59e0b" 
+    },
+    { 
+      name: "Negative", 
+      value: analytics.sentimentData.negative, 
+      percentage: analytics.totalFeedbackCount > 0 ? Math.round((analytics.sentimentData.negative / analytics.totalFeedbackCount) * 100) : 0, 
+      color: "#ef4444" 
+    },
   ]
 
   // Transform feedback data for the highlights component
@@ -166,13 +185,13 @@ export default function RestaurantDashboard() {
     <div className="min-h-screen bg-background">
       <Header 
         restaurantName={restaurant.name}
-        restaurantLogo={undefined}
+        restaurantLogo={(restaurant as any)?.logoUrl || undefined}
       />
       
       <main className="container mx-auto px-6 py-8 space-y-8">
         {/* Welcome Section */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold bg-brand-gradient bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-foreground">
             Welcome back, {restaurant.name}! 👋
           </h1>
           <p className="text-muted-foreground">
@@ -192,7 +211,7 @@ export default function RestaurantDashboard() {
           />
           <KPICard
             title="Average Rating"
-            value={`${analytics.csatScore}/5`}
+            value={`${analytics.averageRating}/5`}
             change={8}
             changeLabel="vs last month"
             icon={<Star className="w-6 h-6" />}
@@ -200,7 +219,7 @@ export default function RestaurantDashboard() {
           />
           <KPICard
             title="Positive Feedback"
-            value={`${Math.round((analytics.sentimentData.positive / analytics.totalFeedbackCount) * 100)}%`}
+            value={`${analytics.totalFeedbackCount > 0 ? Math.round((analytics.sentimentData.positive / analytics.totalFeedbackCount) * 100) : 0}%`}
             change={5}
             changeLabel="vs last month"
             icon={<TrendingUp className="w-6 h-6" />}

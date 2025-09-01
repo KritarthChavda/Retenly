@@ -55,7 +55,7 @@ export const KPICard = ({
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <div className="space-y-1">
-            <p className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+            <p className="text-3xl font-bold text-foreground">
               {value}
             </p>
             {change !== undefined && (
