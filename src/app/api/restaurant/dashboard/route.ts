@@ -9,6 +9,7 @@ import {
   calculateSentimentDistribution,
   calculateAverageRating 
 } from '@/lib/sentiment'
+import { verifyToken } from '@/lib/auth-edge'
 
 /**
  * GET: Fetch restaurant dashboard data including analytics and feedback
@@ -18,25 +19,26 @@ import {
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('=== RESTAURANT DASHBOARD API CALLED ===')
-    console.log('Request headers:', Object.fromEntries(request.headers.entries()))
-    
-    // Get restaurant ID from JWT token in headers (set by middleware)
-    const userId = request.headers.get('x-user-id')
-    const userType = request.headers.get('x-user-type')
-    
-    console.log('Extracted from headers:', { userId, userType })
-    
-    if (!userId || userType !== 'restaurant') {
-      console.error('❌ Authentication failed:', { userId, userType })
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+    console.log("=== RESTAURANT DASHBOARD API CALLED ===")
+
+    // ✅ Extract token from cookies
+    const token = request.cookies.get('auth-token')?.value
+    if (!token) {
+      console.error("❌ No token found in cookies")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const restaurantId = userId
-    console.log('🔍 Looking for restaurant with ID:', restaurantId)
+    // ✅ Verify token with jose
+    const payload = await verifyToken(token)
+    console.log("Decoded JWT payload:", payload)
+
+    if (!payload || payload.type !== "restaurant") {
+      console.error("❌ Invalid or unauthorized token")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const restaurantId = payload.id
+    console.log("🔍 Looking for restaurant with ID:", restaurantId)
 
     // Verify restaurant exists
     const restaurant = await prisma.restaurant.findUnique({

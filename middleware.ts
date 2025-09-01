@@ -7,7 +7,9 @@ import { verifyToken } from '@/lib/auth-edge'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  console.log('🔍 Middleware processing:', pathname)
+  console.log('🔍 MIDDLEWARE START - Processing:', pathname)
+  console.log('🔍 Request method:', request.method)
+  console.log('🔍 Full URL:', request.url)
 
   // Public routes that don't require authentication
   const publicRoutes = [
@@ -31,6 +33,13 @@ export async function middleware(request: NextRequest) {
     pathname === route || pathname.startsWith(`${route}/`)
   )
 
+  console.log('🔍 Route analysis:', {
+    pathname,
+    isPublicRoute,
+    matchesAdmin: adminRoutes.some(route => pathname.startsWith(route)),
+    matchesRestaurant: restaurantRoutes.some(route => pathname.startsWith(route))
+  })
+
   if (isPublicRoute) {
     console.log('✅ Public route, allowing access:', pathname)
     return NextResponse.next()
@@ -51,6 +60,9 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value
 
   console.log('🔐 Auth token found:', !!token)
+  if (token) {
+    console.log('🔐 Token preview:', token.substring(0, 50) + '...')
+  }
 
   if (!token) {
     console.log('❌ No auth token, redirecting to login')
@@ -64,6 +76,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Verify token
+  console.log('🔍 About to verify token...')
   const user = await verifyToken(token)
   console.log('🔍 Token verification result:', user)
   
@@ -103,6 +116,7 @@ export async function middleware(request: NextRequest) {
     'x-user-type': user.type,
     'x-restaurant-id': user.restaurantId
   })
+  console.log('🔍 MIDDLEWARE END - Returning response with headers')
 
   return response
 }
@@ -117,9 +131,5 @@ export const config = {
      * - public folder
      */
     '/((?!_next/static|_next/image|favicon.ico|public/).*)',
-    '/api/:path*',
-    '/dashboard/:path*',
-    '/admin/:path*',
-    '/restaurant/:path*'
   ],
 }

@@ -51,11 +51,11 @@ export async function createToken(payload: JWTPayload): Promise<string> {
     console.log('🔐 Creating JWT token for:', payload)
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret')
     
-    const token = await new SignJWT(payload)
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('7d')
-      .sign(secret)
+    const token = await new SignJWT({ ...payload }) // spread into plain object
+  .setProtectedHeader({ alg: 'HS256' })
+  .setIssuedAt()
+  .setExpirationTime('7d')
+  .sign(secret)
     
     console.log('✅ JWT token created successfully')
     return token

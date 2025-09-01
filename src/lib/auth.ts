@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
-import { createToken as createJWTToken } from './auth-edge'
+import { createToken as createJWTToken, verifyToken } from './auth-edge'
 
 export interface JWTPayload {
   id: string
@@ -205,38 +205,31 @@ export async function createToken(user: JWTPayload): Promise<string> {
   return createJWTToken(user)
 }
 
-/**
- * Middleware to require admin authentication
- * 
- * @param request - Next.js request
- * @returns Authentication result
- */
-export function requireAdmin(request: NextRequest): AuthResult {
+
+export async function requireAdmin(request: NextRequest): Promise<AuthResult> {
   const token = request.cookies.get('auth-token')?.value
-  
   if (!token) {
     return { success: false, error: 'No token provided' }
   }
-  
-  // For middleware, we'll do basic validation
-  // Full validation happens in the API route
-  return { success: true, user: { id: 'temp', username: 'temp', type: 'admin' } }
+
+  const payload = await verifyToken(token)
+  if (!payload || payload.type !== 'admin') {
+    return { success: false, error: 'Invalid or unauthorized token' }
+  }
+
+  return { success: true, user: payload }
 }
 
-/**
- * Middleware to require restaurant authentication
- * 
- * @param request - Next.js request
- * @returns Authentication result
- */
-export function requireRestaurant(request: NextRequest): AuthResult {
+export async function requireRestaurant(request: NextRequest): Promise<AuthResult> {
   const token = request.cookies.get('auth-token')?.value
-  
   if (!token) {
     return { success: false, error: 'No token provided' }
   }
-  
-  // For middleware, we'll do basic validation
-  // Full validation happens in the API route
-  return { success: true, user: { id: 'temp', username: 'temp', type: 'restaurant' } }
+
+  const payload = await verifyToken(token)
+  if (!payload || payload.type !== 'restaurant') {
+    return { success: false, error: 'Invalid or unauthorized token' }
+  }
+
+  return { success: true, user: payload }
 }
