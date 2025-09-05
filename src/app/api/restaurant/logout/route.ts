@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     )
 
     // Clear restaurant session cookie
-    response.cookies.set('restaurant-session', '', {
+    response.cookies.set('auth-token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',

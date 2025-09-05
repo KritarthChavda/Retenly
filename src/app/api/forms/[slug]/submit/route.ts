@@ -1,5 +1,6 @@
 export const runtime = 'nodejs'
 
+import bcrypt from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { extractPhoneNumber, extractCustomerName, extractRatingFromAnswers } from '@/lib/sentiment'
@@ -61,31 +62,8 @@ export async function POST(
       experience: answers.experience
     })
 
-    // Check for duplicate submissions (24-hour window)
-    if (phoneNumber && phoneNumber !== 'N/A') {
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      const existingFeedback = await prisma.feedback.findFirst({
-        where: {
-          formId: form.id,
-          phoneNumber,
-          createdAt: {
-            gte: yesterday
-          }
-        }
-      })
-
-      if (existingFeedback) {
-        console.warn('Duplicate feedback attempt blocked:', {
-          phoneNumber,
-          formId: form.id,
-          slug
-        })
-        return NextResponse.json(
-          { error: 'Feedback already submitted within 24 hours' },
-          { status: 409 }
-        )
-      }
-    }
+    // Hash the phone number
+    const hashedPhoneNumber = phoneNumber && phoneNumber !== 'N/A' ? await bcrypt.hash(phoneNumber, 10) : ''
 
     // Extract experience and rating
     const experience = answers.experience || null
@@ -130,7 +108,7 @@ export async function POST(
       data: {
         formId: form.id,
         name: customerName,
-        phoneNumber: phoneNumber === 'N/A' ? '' : phoneNumber || '',
+        phoneNumber: hashedPhoneNumber,
         experience: experience,
         sentiment: sentiment,
         rating: rating,

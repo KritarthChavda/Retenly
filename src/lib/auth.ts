@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { createToken as createJWTToken, verifyToken } from './auth-edge'
 
+
 export interface JWTPayload {
   id: string
   username: string
@@ -17,7 +18,7 @@ export interface AuthResult {
 
 // Get admin credentials from environment
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin'
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
+
 
 /**
  * Hash password using bcrypt
@@ -82,7 +83,7 @@ export async function getOrCreateAdmin(): Promise<{ id: string; username: string
   })
 
   if (!admin) {
-    const hashedPassword = await hashPassword(ADMIN_PASSWORD)
+    const hashedPassword = await hashPassword(process.env.ADMIN_PASSWORD || 'admin123')
     admin = await prisma.admin.create({
       data: {
         username: ADMIN_USERNAME,
@@ -103,41 +104,22 @@ export async function getOrCreateAdmin(): Promise<{ id: string; username: string
  */
 export async function verifyAdminCredentials(username: string, password: string): Promise<AuthResult> {
   try {
-    // Check against environment variables for super admin
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      const admin = await getOrCreateAdmin()
-      
-      const payload: JWTPayload = {
-        id: admin.id,
-        username: admin.username,
-        type: 'admin'
-      }
-      
-      console.log('Admin login successful', { username })
-      return { success: true, user: payload }
-    }
+    const admin = await prisma.admin.findUnique({
+      where: { username }
+    })
     
-    // Fallback: Check database for additional admin users
-    try {
-      const admin = await prisma.admin.findUnique({
-        where: { username }
-      })
-      
-      if (admin) {
-        const isValidPassword = await verifyPassword(password, admin.password)
-        if (isValidPassword) {
-          const payload: JWTPayload = {
-            id: admin.id,
-            username: admin.username,
-            type: 'admin'
-          }
-          
-          console.log('Admin login successful (database)', { username })
-          return { success: true, user: payload }
+    if (admin) {
+      const isValidPassword = await verifyPassword(password, admin.password)
+      if (isValidPassword) {
+        const payload: JWTPayload = {
+          id: admin.id,
+          username: admin.username,
+          type: 'admin'
         }
+        
+        console.log('Admin login successful (database)', { username })
+        return { success: true, user: payload }
       }
-    } catch (dbError) {
-      console.warn('Database admin check failed, using env only', { error: dbError })
     }
     
     console.warn('Admin login attempt with invalid credentials', { username })

@@ -10,8 +10,14 @@ import { sendRestaurantCredentials } from '@/lib/email'
  * GET: Fetch all restaurants
  * POST: Create a new restaurant
  */
-export async function GET() {
+import { requireAdmin } from '@/lib/auth'
+
+export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireAdmin(request)
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: 401 })
+    }
     const restaurants = await prisma.restaurant.findMany({
       include: {
         _count: {
@@ -35,6 +41,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireAdmin(request)
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: 401 })
+    }
     const body = await request.json()
     const { name, email } = body
 

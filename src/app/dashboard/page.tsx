@@ -74,26 +74,16 @@ export default function RestaurantDashboard() {
         setTopPositiveFeedbacks(analyticsData.topPositiveFeedbacks || [])
         setTopNegativeFeedbacks(analyticsData.topNegativeFeedbacks || [])
         setForms(analyticsData.forms || [])
-      }
-
-      // Fetch recent feedback for the table
-      const feedbackResponse = await fetch('/api/restaurant/feedbacks')
-      if (feedbackResponse.ok) {
-        const feedbackData = await feedbackResponse.json()
-        // Transform feedback data to ensure all properties exist
-        const transformedFeedback = (feedbackData.feedbacks || []).map((f: any) => {
-          // The API now returns properly formatted data with rating and sentiment
-          return {
-            ...f,
-            name: f.name || 'Unknown Customer',
-            text: f.feedback || '',
-            rating: f.rating || 3,
-            sentiment: f.sentiment?.toLowerCase() || 'neutral'
-          };
-        });
-        setRecentFeedbacks(transformedFeedback)
+        
+        // Use recent feedbacks from the dashboard API
+        const recentFeedbacksData = analyticsData.recentFeedbacks || []
+        setRecentFeedbacks(recentFeedbacksData)
+      } else {
+        console.error('Failed to fetch dashboard data:', analyticsResponse.status)
+        setError('Failed to load dashboard data')
       }
     } catch (error) {
+      console.error('Error fetching dashboard data:', error)
       setError('An error occurred while loading dashboard data')
     } finally {
       setIsLoading(false)

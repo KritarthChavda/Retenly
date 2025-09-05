@@ -7,8 +7,14 @@ import { prisma } from '@/lib/prisma'
  * @param request - The incoming request
  * @returns NextResponse with debug information
  */
+import { requireAdmin } from '@/lib/auth'
+
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireAdmin(request)
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: 401 })
+    }
     // Get all restaurants
     const restaurants = await prisma.restaurant.findMany({
       select: {

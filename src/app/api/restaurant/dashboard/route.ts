@@ -20,6 +20,7 @@ import { verifyToken } from '@/lib/auth-edge'
 export async function GET(request: NextRequest) {
   try {
     console.log("=== RESTAURANT DASHBOARD API CALLED ===")
+    console.log("Request headers:", Object.fromEntries(request.headers.entries()))
 
     // ✅ Extract token from cookies
     const token = request.cookies.get('auth-token')?.value
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
       console.error("❌ No token found in cookies")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
+    
     // ✅ Verify token with jose
     const payload = await verifyToken(token)
     console.log("Decoded JWT payload:", payload)
@@ -253,6 +254,15 @@ export async function GET(request: NextRequest) {
       },
       topPositiveFeedbacks,
       topNegativeFeedbacks,
+      recentFeedbacks: allFeedbacks.slice(0, 10).map(f => ({
+        id: f.id,
+        name: f.name || 'Anonymous',
+        feedback: f.feedback || 'No text feedback',
+        experience: f.experience,
+        rating: f.rating || 3,
+        sentiment: f.sentiment || 'neutral',
+        createdAt: f.createdAt
+      })),
       forms: forms.map(form => ({
         id: form.id,
         title: form.title,

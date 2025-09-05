@@ -10,8 +10,14 @@ import { prisma } from '@/lib/prisma'
  * @param request - The incoming request
  * @returns NextResponse with forms data or creation result
  */
+import { requireAdmin } from '@/lib/auth'
+
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireAdmin(request)
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: 401 })
+    }
     const forms = await prisma.form.findMany({
       include: {
         restaurant: {
@@ -45,6 +51,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireAdmin(request)
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: 401 })
+    }
     const body = await request.json()
     const { 
       restaurantSlug, 

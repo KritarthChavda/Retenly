@@ -63,6 +63,7 @@ export default function AllFeedback() {
   const [allFeedback, setAllFeedback] = useState<FeedbackItem[]>([]);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const itemsPerPage = 8;
 
   useEffect(() => {
@@ -76,27 +77,39 @@ export default function AllFeedback() {
       if (restaurantResponse.ok) {
         const restaurantData = await restaurantResponse.json()
         setRestaurant(restaurantData.restaurant)
+      } else {
+        console.error('Failed to fetch restaurant data:', restaurantResponse.status)
+        setError('Failed to load restaurant data')
+        return
       }
 
       // Fetch all feedback
       const response = await fetch('/api/restaurant/feedbacks')
       if (response.ok) {
         const data = await response.json()
+        console.log('Feedback API response:', data)
+        
         // Transform feedback data to ensure all properties exist
         const transformedFeedback = (data.feedbacks || []).map((f: any) => ({
           id: f.id,
           date: f.createdAt,
-          customerName: f.name || 'Unknown Customer',
+          customerName: f.name || 'Anonymous',
           phone: f.phoneNumber || 'N/A',
           feedback: f.feedback || 'No text feedback',
           rating: f.rating || 3,
           sentiment: f.sentiment?.toLowerCase() || 'neutral',
           tags: []
         }));
+        
+        console.log('Transformed feedback:', transformedFeedback)
         setAllFeedback(transformedFeedback)
+      } else {
+        console.error('Failed to fetch feedback data:', response.status)
+        setError('Failed to load feedback data')
       }
     } catch (error) {
       console.error('Error fetching feedback:', error)
+      setError('An error occurred while loading feedback data')
     } finally {
       setIsLoading(false)
     }
@@ -156,6 +169,17 @@ export default function AllFeedback() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-4">❌ Error</h1>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
       </div>
     );
   }

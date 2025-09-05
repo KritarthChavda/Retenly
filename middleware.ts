@@ -5,6 +5,7 @@ import { verifyToken } from '@/lib/auth-edge'
  * Production-ready middleware for authentication and routing
  */
 export async function middleware(request: NextRequest) {
+  console.log('🚀 MIDDLEWARE EXECUTING FOR:', request.url)
   const { pathname } = request.nextUrl
 
   console.log('🔍 MIDDLEWARE START - Processing:', pathname)
@@ -103,33 +104,24 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Add user info to headers for API routes
-  const response = NextResponse.next()
-  response.headers.set('x-user-id', user.id)
-  response.headers.set('x-user-type', user.type)
-  if (user.restaurantId) {
-    response.headers.set('x-restaurant-id', user.restaurantId)
-  }
+// Add user info to headers for API routes
+const requestHeaders = new Headers(request.headers)
+requestHeaders.set('x-user-id', user.id)
+requestHeaders.set('x-user-type', user.type)
 
-  console.log('✅ Authentication successful, setting headers:', {
-    'x-user-id': user.id,
-    'x-user-type': user.type,
-    'x-restaurant-id': user.restaurantId
-  })
-  console.log('🔍 MIDDLEWARE END - Returning response with headers')
-
-  return response
+// Only attach restaurantId if restaurant
+if (user.type === 'restaurant' && user.restaurantId) {
+  requestHeaders.set('x-restaurant-id', user.restaurantId)
 }
 
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
-  ],
+// Attach admin id if admin
+if (user.type === 'admin') {
+  requestHeaders.set('x-admin-id', user.id)
+}
+
+return NextResponse.next({
+  request: {
+    headers: requestHeaders,
+  },
+})
 }
