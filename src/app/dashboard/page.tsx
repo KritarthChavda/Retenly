@@ -12,6 +12,7 @@ interface Restaurant {
   id: string
   name: string
   username: string
+  logoUrl?: string
 }
 
 interface Analytics {
@@ -25,6 +26,12 @@ interface Analytics {
   npsScore: number
   mostLovedFeature: string
   averageRating: number
+  kpiCardData: {
+    totalFeedback: { change: number; changeLabel: string }
+    averageRating: { change: number; changeLabel: string }
+    positiveFeedback: { change: number; changeLabel: string }
+    customerSatisfaction: { change: number; changeLabel: string }
+  }
 }
 
 interface Feedback {
@@ -43,6 +50,8 @@ interface Form {
   feedbackCount: number
   responseCount: number
 }
+
+const Skeleton = () => <div className="bg-gray-200 rounded-md animate-pulse"></div>
 
 /**
  * Main restaurant dashboard page with Loveable design
@@ -65,21 +74,17 @@ export default function RestaurantDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch dashboard analytics
-      const analyticsResponse = await fetch('/api/restaurant/dashboard')
-      if (analyticsResponse.ok) {
-        const analyticsData = await analyticsResponse.json()
-        setRestaurant(analyticsData.restaurant)
-        setAnalytics(analyticsData.analytics)
-        setTopPositiveFeedbacks(analyticsData.topPositiveFeedbacks || [])
-        setTopNegativeFeedbacks(analyticsData.topNegativeFeedbacks || [])
-        setForms(analyticsData.forms || [])
-        
-        // Use recent feedbacks from the dashboard API
-        const recentFeedbacksData = analyticsData.recentFeedbacks || []
-        setRecentFeedbacks(recentFeedbacksData)
+      const response = await fetch('/api/restaurant/dashboard', { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setRestaurant(data.restaurant)
+        setAnalytics(data.analytics)
+        setTopPositiveFeedbacks(data.topPositiveFeedbacks || [])
+        setTopNegativeFeedbacks(data.topNegativeFeedbacks || [])
+        setRecentFeedbacks(data.recentFeedbacks || [])
+        setForms(data.forms || [])
       } else {
-        console.error('Failed to fetch dashboard data:', analyticsResponse.status)
+        console.error('Failed to fetch dashboard data:', response.status)
         setError('Failed to load dashboard data')
       }
     } catch (error) {
@@ -92,9 +97,27 @@ export default function RestaurantDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+        <div className="min-h-screen bg-background p-8">
+            <Header restaurantName="Loading..." />
+            <main className="container mx-auto px-6 py-8 space-y-8">
+                <div className="space-y-2">
+                    <Skeleton />
+                    <Skeleton />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <Skeleton />
+                    <Skeleton />
+                    <Skeleton />
+                    <Skeleton />
+                </div>
+                <div className="grid lg:grid-cols-2 gap-8">
+                    <Skeleton />
+                    <Skeleton />
+                </div>
+                <Skeleton />
+                <Skeleton />
+            </main>
+        </div>
     )
   }
 
@@ -117,6 +140,22 @@ export default function RestaurantDashboard() {
           <p className="text-muted-foreground">Unable to load restaurant data.</p>
         </div>
       </div>
+    )
+  }
+  
+  if (analytics.totalFeedbackCount === 0) {
+    return (
+        <div className="min-h-screen bg-background">
+            <Header 
+                restaurantName={restaurant.name}
+                restaurantLogo={restaurant.logoUrl}
+            />
+            <main className="container mx-auto px-6 py-8 text-center">
+                <h1 className="text-3xl font-bold text-foreground">Welcome, {restaurant.name}! 👋</h1>
+                <p className="text-muted-foreground mt-2">You don't have any feedback yet.</p>
+                <p className="text-muted-foreground">Share your feedback form with your customers to get started.</p>
+            </main>
+        </div>
     )
   }
 
@@ -175,7 +214,7 @@ export default function RestaurantDashboard() {
     <div className="min-h-screen bg-background">
       <Header 
         restaurantName={restaurant.name}
-        restaurantLogo={(restaurant as any)?.logoUrl || undefined}
+        restaurantLogo={restaurant.logoUrl}
       />
       
       <main className="container mx-auto px-6 py-8 space-y-8">
@@ -194,32 +233,32 @@ export default function RestaurantDashboard() {
           <KPICard
             title="Total Feedback"
             value={analytics.totalFeedbackCount}
-            change={12}
-            changeLabel="vs last month"
+            change={analytics.kpiCardData.totalFeedback.change}
+            changeLabel={analytics.kpiCardData.totalFeedback.changeLabel}
             icon={<MessageSquare className="w-6 h-6" />}
             variant="default"
           />
           <KPICard
             title="Average Rating"
             value={`${analytics.averageRating}/5`}
-            change={8}
-            changeLabel="vs last month"
+            change={analytics.kpiCardData.averageRating.change}
+            changeLabel={analytics.kpiCardData.averageRating.changeLabel}
             icon={<Star className="w-6 h-6" />}
             variant="positive"
           />
           <KPICard
             title="Positive Feedback"
             value={`${analytics.totalFeedbackCount > 0 ? Math.round((analytics.sentimentData.positive / analytics.totalFeedbackCount) * 100) : 0}%`}
-            change={5}
-            changeLabel="vs last month"
+            change={analytics.kpiCardData.positiveFeedback.change}
+            changeLabel={analytics.kpiCardData.positiveFeedback.changeLabel}
             icon={<TrendingUp className="w-6 h-6" />}
             variant="positive"
           />
           <KPICard
             title="Customer Satisfaction"
             value={`${analytics.csatScore}%`}
-            change={-2}
-            changeLabel="vs last month"
+            change={analytics.kpiCardData.customerSatisfaction.change}
+            changeLabel={analytics.kpiCardData.customerSatisfaction.changeLabel}
             icon={<Users className="w-6 h-6" />}
             variant="neutral"
           />
@@ -273,4 +312,4 @@ export default function RestaurantDashboard() {
       </main>
     </div>
   )
-} 
+}

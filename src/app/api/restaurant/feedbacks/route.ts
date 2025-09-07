@@ -18,22 +18,35 @@ import {
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('=== FEEDBACKS API CALLED ===')
-    console.log('Request headers:', Object.fromEntries(request.headers.entries()))
+    console.log('=== [api/restaurant/feedbacks] FEEDBACKS API CALLED ===');
     
-    // Get restaurant ID from JWT token in headers (set by middleware)
-    const userId = request.headers.get('x-user-id')
-    const userType = request.headers.get('x-user-type')
+    // Extract JWT token directly from cookies
+    const token = request.cookies.get('auth-token')?.value;
+    console.log('[api/restaurant/feedbacks] Token found:', !!token);
     
-    console.log('Extracted from headers:', { userId, userType })
-    
-    if (!userId || userType !== 'restaurant') {
-      console.log('❌ Authentication failed:', { userId, userType })
+    if (!token) {
+      console.log('❌ [api/restaurant/feedbacks] No token found in cookies');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      )
+      );
     }
+    
+    // Verify token directly
+    const { verifyToken } = await import('@/lib/auth-edge');
+    const user = await verifyToken(token);
+    console.log('[api/restaurant/feedbacks] Token verification result:', user);
+    
+    if (!user || user.type !== 'restaurant') {
+      console.log('❌ [api/restaurant/feedbacks] Invalid token or not restaurant user');
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    const userId = user.id;
+    console.log('[api/restaurant/feedbacks] Authenticated user ID:', userId);
 
     const restaurantId = userId
 
@@ -129,7 +142,7 @@ export async function GET(request: NextRequest) {
           name: feedback.name || 'Anonymous',
           phoneNumber: feedback.phoneNumber || 'N/A',
           experience: feedback.experience || 'N/A',
-          feedback: feedback.feedback || 'No text feedback',
+          feedback: feedback.feedback?.toString().trim() || 'No feedback provided',
           rating: rating || 3,
           createdAt: feedback.createdAt,
           sentiment: sentiment || 'neutral'
@@ -159,7 +172,7 @@ export async function GET(request: NextRequest) {
             name: customerName || 'Anonymous',
             phoneNumber: extractPhoneNumber(answers) || 'N/A',
             experience: 'N/A',
-            feedback: feedbackText || 'No text feedback',
+            feedback: (feedbackText && feedbackText.toString().trim()) || 'No feedback provided',
             rating: rating || 3,
             createdAt: response.createdAt,
             sentiment: sentiment || 'neutral'
@@ -196,7 +209,13 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      feedbacks: allFeedbackData
+      restaurant: {
+        id: restaurant.id,
+        name: restaurant.name,
+        username: restaurant.username
+      },
+      feedbacks: allFeedbackData,
+      forms: forms
     })
   } catch (error) {
     console.error('Error fetching feedbacks:', error)

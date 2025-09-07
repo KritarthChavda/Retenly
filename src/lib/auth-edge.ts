@@ -1,11 +1,6 @@
 import { jwtVerify, SignJWT } from 'jose'
+import { JWTPayload } from './types/auth'
 
-export interface JWTPayload {
-  id: string
-  username: string
-  type: 'admin' | 'restaurant'
-  restaurantId?: string
-}
 
 /**
  * Verify JWT token (Edge-compatible, no Prisma)
@@ -15,29 +10,35 @@ export interface JWTPayload {
  */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    console.log('🔍 Verifying JWT token...')
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret')
+    console.log('🔍 [auth-edge] Verifying JWT token...');
+    if (!token) {
+        console.log('❌ [auth-edge] Token is null or undefined');
+        return null;
+    }
+    console.log('🔍 [auth-edge] Received token:', token);
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret');
     
     // Properly await the JWT verification
-    const { payload } = await jwtVerify(token, secret)
+    const { payload } = await jwtVerify(token, secret);
     
-    console.log('✅ JWT verification successful, payload:', payload)
+    console.log('✅ [auth-edge] JWT verification successful, payload:', payload);
     
     if (payload && typeof payload === 'object') {
       const result = {
         id: payload.id as string,
         username: payload.username as string,
-        type: payload.type as 'admin' | 'restaurant'
-      }
-      console.log('✅ Extracted user data:', result)
-      return result
+        type: payload.type as 'admin' | 'restaurant',
+        restaurantId: payload.restaurantId as string | undefined
+      };
+      console.log('✅ [auth-edge] Extracted user data:', result);
+      return result;
     }
     
-    console.log('❌ Invalid payload structure')
-    return null
+    console.log('❌ [auth-edge] Invalid payload structure');
+    return null;
   } catch (error) {
-    console.error('❌ JWT verification failed:', error)
-    return null
+    console.error('❌ [auth-edge] JWT verification failed:', error);
+    return null;
   }
 }
 

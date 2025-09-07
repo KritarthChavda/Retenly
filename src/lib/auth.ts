@@ -2,13 +2,7 @@ import { NextRequest } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { createToken as createJWTToken, verifyToken } from './auth-edge'
-
-
-export interface JWTPayload {
-  id: string
-  username: string
-  type: 'admin' | 'restaurant'
-}
+import { JWTPayload } from './types/auth' 
 
 export interface AuthResult {
   success: boolean
@@ -155,7 +149,8 @@ export async function verifyRestaurantCredentials(username: string, password: st
     const payload: JWTPayload = {
       id: restaurant.id,
       username: restaurant.username,
-      type: 'restaurant'
+      type: 'restaurant',
+      restaurantId: restaurant.id
     }
 
     return { success: true, user: payload }

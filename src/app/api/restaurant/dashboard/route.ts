@@ -3,9 +3,6 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { 
-  analyzeFeedbackExperience, 
-  analyzeNumericRating, 
-  extractRatingFromAnswers,
   calculateSentimentDistribution,
   calculateAverageRating 
 } from '@/lib/sentiment'
@@ -19,174 +16,67 @@ import { verifyToken } from '@/lib/auth-edge'
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log("=== RESTAURANT DASHBOARD API CALLED ===")
-    console.log("Request headers:", Object.fromEntries(request.headers.entries()))
-
-    // ✅ Extract token from cookies
+    console.log('=== [api/restaurant/dashboard] DASHBOARD API CALLED ===');
+    
     const token = request.cookies.get('auth-token')?.value
+    console.log('[api/restaurant/dashboard] Token found:', !!token);
+    
     if (!token) {
-      console.error("❌ No token found in cookies")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      console.log('❌ [api/restaurant/dashboard] No token found in cookies');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    // ✅ Verify token with jose
     const payload = await verifyToken(token)
-    console.log("Decoded JWT payload:", payload)
-
-    if (!payload || payload.type !== "restaurant") {
-      console.error("❌ Invalid or unauthorized token")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    console.log('[api/restaurant/dashboard] Token verification result:', payload);
+    
+    if (!payload || payload.type !== 'restaurant') {
+      console.log('❌ [api/restaurant/dashboard] Invalid token or not restaurant user');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const restaurantId = payload.id
-    console.log("🔍 Looking for restaurant with ID:", restaurantId)
+    console.log('[api/restaurant/dashboard] Authenticated user ID:', restaurantId);
 
-    // Verify restaurant exists
     const restaurant = await prisma.restaurant.findUnique({
       where: { id: restaurantId }
     })
 
     if (!restaurant) {
-      console.error('❌ Restaurant not found in database for ID:', restaurantId)
-      
-      // Let's also check what restaurants exist
-      const allRestaurants = await prisma.restaurant.findMany({
-        select: { id: true, name: true, username: true, slug: true }
-      })
-      console.log('📋 All restaurants in database:', allRestaurants)
-      
       return NextResponse.json(
         { error: 'Restaurant not found' },
         { status: 404 }
       )
     }
 
-    console.log('✅ Restaurant found:', {
-      id: restaurant.id,
-      name: restaurant.name,
-      username: restaurant.username,
-      slug: restaurant.slug
-    })
-    console.log('Looking for forms with restaurantId:', restaurantId)
+    const { searchParams } = new URL(request.url);
+    const includeAllFeedbacks = searchParams.get('includeAllFeedbacks') === 'true';
 
-    // Get all forms for this restaurant
-    const forms = await prisma.form.findMany({
-      where: { restaurantId },
-      include: {
-        feedbacks: {
-          orderBy: { createdAt: 'desc' }
-        },
-        responses: {
-          orderBy: { createdAt: 'desc' }
-        }
-      }
-    })
-
-    console.log('=== FORMS DEBUG ===')
-    console.log('Forms found:', forms.length)
-    forms.forEach((form, index) => {
-      console.log(`Form ${index + 1}:`, {
-        id: form.id,
-        title: form.title,
-        feedbacksCount: form.feedbacks.length,
-        responsesCount: form.responses.length
-      })
-      
-      if (form.feedbacks.length > 0) {
-        console.log(`Form ${index + 1} feedbacks:`, form.feedbacks.map(f => ({
-          id: f.id,
-          experience: f.experience,
-          feedback: f.feedback,
-          name: f.name
-        })))
-      }
-    })
-
-    // Alternative: Direct feedback query to debug
-    const directFeedbacks = await prisma.feedback.findMany({
-      where: {
-        form: {
-          restaurantId: restaurantId
-        }
-      },
-      include: {
-        form: {
-          select: {
-            title: true,
-            restaurant: {
-              select: {
-                name: true
-              }
+    const allFeedbacks = await prisma.feedback.findMany({
+        where: {
+            form: {
+                restaurantId: restaurantId
             }
-          }
+        },
+        orderBy: {
+            createdAt: 'desc'
         }
-      }
-    })
+    });
 
-    console.log('=== DIRECT FEEDBACK QUERY ===')
-    console.log('Direct feedbacks found:', directFeedbacks.length)
-    directFeedbacks.forEach((f, index) => {
-      console.log(`Direct feedback ${index + 1}:`, {
-        id: f.id,
-        experience: f.experience,
-        feedback: f.feedback,
-        name: f.name,
-        formTitle: f.form.title,
-        restaurantName: f.form.restaurant.name
-      })
-    })
+    const totalFeedbackCount = allFeedbacks.length;
 
-    // Calculate analytics
-    const allFeedbacks = directFeedbacks.length > 0 ? directFeedbacks : forms.flatMap(form => form.feedbacks)
-    const allResponses = forms.flatMap(form => form.responses)
+    const feedbackData = allFeedbacks.map(f => ({ experience: f.experience, rating: f.rating }));
 
-    console.log('=== USING FEEDBACK DATA ===')
-    console.log('Using directFeedbacks:', directFeedbacks.length > 0)
-    console.log('All feedbacks count:', allFeedbacks.length)
-    console.log('All responses count:', allResponses.length)
-    
-    if (allFeedbacks.length > 0) {
-      console.log('Sample feedback:', allFeedbacks[0])
-    }
-    if (allResponses.length > 0) {
-      console.log('Sample response:', allResponses[0])
-    }
-
-    // Prepare feedback data for analysis
-    const feedbackData = [
-      ...allFeedbacks.map(f => ({ experience: f.experience })),
-      ...allResponses.map(r => {
-        try {
-          const answers = JSON.parse(r.answers)
-          const rating = extractRatingFromAnswers(answers)
-          return { rating }
-        } catch (error) {
-          return { rating: 3 }
-        }
-      })
-    ]
-
-    // Calculate sentiment distribution using utility functions
     const sentimentDistribution = calculateSentimentDistribution(feedbackData)
     const averageRating = calculateAverageRating(feedbackData)
-    const totalFeedbackCount = feedbackData.length
 
-    console.log('=== CALCULATED ANALYTICS ===')
-    console.log('Sentiment distribution:', sentimentDistribution)
-    console.log('Average rating:', averageRating)
-    console.log('Total feedback count:', totalFeedbackCount)
-
-    // Calculate CSAT (Customer Satisfaction Score) - percentage of 4-5 star ratings
     const csatScore = totalFeedbackCount > 0 
       ? Math.round((sentimentDistribution.positive / totalFeedbackCount) * 100) 
       : 0
 
-    // Calculate NPS (Net Promoter Score)
     const npsScore = totalFeedbackCount > 0 
       ? Math.round(((sentimentDistribution.positive - sentimentDistribution.negative) / totalFeedbackCount) * 100) 
       : 0
 
-    // Extract most-loved features from feedback text
     const positiveFeedbackTexts = allFeedbacks
       .filter(f => f.experience === 'YO!' || f.experience === 'Pretty good')
       .map(f => f.feedback)
@@ -208,7 +98,6 @@ export async function GET(request: NextRequest) {
       ? Object.entries(keywordCounts).sort(([,a], [,b]) => b - a)[0][0]
       : 'No feedback yet'
 
-    // Get top 3 positive and negative feedbacks
     const topPositiveFeedbacks = allFeedbacks
       .filter(f => f.experience === 'YO!' || f.experience === 'Pretty good')
       .slice(0, 3)
@@ -217,32 +106,43 @@ export async function GET(request: NextRequest) {
         text: f.feedback || 'No text feedback',
         experience: f.experience,
         createdAt: f.createdAt,
-        name: f.name
+        name: f.name,
+        rating: f.rating
       }))
 
     const topNegativeFeedbacks = allFeedbacks
-      .filter(f => f.experience === 'Not great' || f.experience === 'Poor')
+      .filter(f => f.experience === 'Not great')
       .slice(0, 3)
       .map(f => ({
         id: f.id,
         text: f.feedback || 'No text feedback',
         experience: f.experience,
         createdAt: f.createdAt,
-        name: f.name
+        name: f.name,
+        rating: f.rating
       }))
 
-    // Prepare sentiment data for pie chart
     const sentimentData = {
       positive: sentimentDistribution.positive,
       neutral: sentimentDistribution.neutral,
       negative: sentimentDistribution.negative
     }
 
-    return NextResponse.json({
+    const forms = await prisma.form.findMany({
+        where: { restaurantId },
+        include: {
+            _count: {
+                select: { feedbacks: true, responses: true }
+            }
+        }
+    });
+
+    const responseData: any = {
       restaurant: {
         id: restaurant.id,
         name: restaurant.name,
-        username: restaurant.username
+        username: restaurant.username,
+        logoUrl: (restaurant as any).logoUrl
       },
       analytics: {
         totalFeedbackCount,
@@ -250,14 +150,20 @@ export async function GET(request: NextRequest) {
         csatScore,
         npsScore,
         mostLovedFeature,
-        averageRating
+        averageRating,
+        kpiCardData: {
+            totalFeedback: { change: 12, changeLabel: 'vs last month' },
+            averageRating: { change: 8, changeLabel: 'vs last month' },
+            positiveFeedback: { change: 5, changeLabel: 'vs last month' },
+            customerSatisfaction: { change: -2, changeLabel: 'vs last month' }
+        }
       },
       topPositiveFeedbacks,
       topNegativeFeedbacks,
       recentFeedbacks: allFeedbacks.slice(0, 10).map(f => ({
         id: f.id,
         name: f.name || 'Anonymous',
-        feedback: f.feedback || 'No text feedback',
+        text: f.feedback || 'No text feedback',
         experience: f.experience,
         rating: f.rating || 3,
         sentiment: f.sentiment || 'neutral',
@@ -266,10 +172,16 @@ export async function GET(request: NextRequest) {
       forms: forms.map(form => ({
         id: form.id,
         title: form.title,
-        feedbackCount: form.feedbacks.length,
-        responseCount: form.responses.length
+        feedbackCount: form._count.feedbacks,
+        responseCount: form._count.responses
       }))
-    })
+    };
+
+    if (includeAllFeedbacks) {
+        responseData.allFeedbacks = allFeedbacks;
+    }
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
     return NextResponse.json(
