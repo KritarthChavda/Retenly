@@ -121,7 +121,9 @@ export default function AllFeedback() {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${i < rating ? "fill-warning text-warning" : "text-muted-foreground"
+        className={`w-4 h-4 ${i < rating
+          ? "text-yellow-400 fill-yellow-400"
+          : "text-muted-foreground/30"
           }`}
       />
     ));
@@ -161,6 +163,27 @@ export default function AllFeedback() {
       </div>
     );
   }
+  const handleExport = () => {
+    const csvContent = [
+      "Date,Customer Name,Rating,Sentiment,Feedback",
+      ...filteredFeedback.map(item =>
+        `${item.date},${item.customerName},${item.rating},${item.sentiment},"${item.feedback.replace(/"/g, '""')}"`
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "feedback_export.csv");
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -175,10 +198,11 @@ export default function AllFeedback() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Export
+            <Button onClick={handleExport} className="bg-brand-gradient hover:opacity-90">
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
             </Button>
+
           </div>
         </div>
 
@@ -237,7 +261,7 @@ export default function AllFeedback() {
               <div className="text-4xl mb-4">📝</div>
               <h3 className="text-lg font-semibold mb-2">No feedback found</h3>
               <p>
-                {allFeedback.length === 0 
+                {allFeedback.length === 0
                   ? "No feedback has been submitted yet. Share your feedback form with customers to start collecting feedback."
                   : "No feedback matches your current filters. Try adjusting your search criteria."
                 }
@@ -259,7 +283,6 @@ export default function AllFeedback() {
                         </div>
                         <div>
                           <h3 className="font-semibold text-foreground">{feedback.customerName}</h3>
-                          <p className="text-sm text-muted-foreground">{feedback.phone}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
