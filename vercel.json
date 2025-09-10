@@ -1,12 +1,6 @@
 {
   "version": 2,
   "name": "retenly",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "routes": [
     {
       "src": "/forms/([^/]+)",
@@ -34,14 +28,14 @@
     "FROM_EMAIL": "@from_email",
     "FROM_NAME": "Retenly"
   },
-  "build": {
-    "env": {
-      "NODE_ENV": "production"
-    }
-  },
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
+    }
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
     }
   }
 }
