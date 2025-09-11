@@ -91,7 +91,7 @@ export async function calculateFeedbackAnalytics(restaurantId: string): Promise<
         ratingCount++
         ratingDistribution[rating as keyof typeof ratingDistribution]++
       } catch (error) {
-        logger.warn('Failed to parse response answers', { responseId: response.id, error })
+        logger.warn('Failed to parse response answers',)
       }
     })
 
@@ -116,7 +116,7 @@ export async function calculateFeedbackAnalytics(restaurantId: string): Promise<
         else if (sentiment === 'neutral') neutral++
         else negative++
       } catch (error) {
-        logger.warn('Failed to analyze response sentiment', { responseId: response.id, error })
+        logger.warn('Failed to analyze response sentiment',)
       }
     })
 
@@ -151,7 +151,7 @@ export async function calculateFeedbackAnalytics(restaurantId: string): Promise<
       }
     }
   } catch (error) {
-    logger.error('Error calculating feedback analytics', { restaurantId, error })
+    logger.error('Error calculating feedback analytics',)
     throw new Error('Failed to calculate analytics')
   }
 }
@@ -189,7 +189,7 @@ export async function calculateResponseAnalytics(formId: string): Promise<Respon
           popularAnswers[key][stringValue] = (popularAnswers[key][stringValue] || 0) + 1
         })
       } catch (error) {
-        logger.warn('Failed to parse response for analytics', { responseId: response.id, error })
+        logger.warn('Failed to parse response for analytics',)
       }
     })
 
@@ -200,7 +200,7 @@ export async function calculateResponseAnalytics(formId: string): Promise<Respon
       popularAnswers
     }
   } catch (error) {
-    logger.error('Error calculating response analytics', { formId, error })
+    logger.error('Error calculating response analytics',)
     throw new Error('Failed to calculate response analytics')
   }
 }
@@ -322,7 +322,7 @@ export async function getAdminAnalytics() {
       recentActivity: recentFeedbacks
     }
   } catch (error) {
-    logger.error('Error calculating admin analytics', { error })
+    logger.error('Error calculating admin analytics',)
     throw new Error('Failed to calculate admin analytics')
   }
 }

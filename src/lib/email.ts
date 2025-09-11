@@ -52,7 +52,7 @@ export async function sendRestaurantCredentials(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const loginUrl = `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'}/restaurant/login`
-    
+
     const htmlBody = `
     <!DOCTYPE html>
     <html>
@@ -139,39 +139,24 @@ The Retenly Team
 
     // For development, just log the email
     if (process.env.NODE_ENV === 'development') {
-      logger.info('Email would be sent in production', {
-        to: emailData.to,
-        subject: emailData.subject,
-        restaurantName,
-        username
-      })
+      logger.info(
+        `Email would be sent in production: to=${emailData.to}, subject=${emailData.subject}, restaurantName=${restaurantName}, username=${username}`
+      )
       return { success: true }
     }
 
     // Send actual email in production
     const result = await sendEmail(emailData)
     if (result.success) {
-      logger.info('Restaurant credentials email sent successfully', {
-        to: email,
-        restaurantName,
-        username
-      })
+      logger.info(`Restaurant credentials email sent successfully: to=${emailData.to}, subject=${emailData.subject}, restaurantName=${restaurantName}`)
     } else {
-      logger.error('Failed to send restaurant credentials email', {
-        to: email,
-        restaurantName,
-        error: result.error
-      })
+      logger.error(`Failed to send restaurant credentials email: to=${emailData.to}, subject=${emailData.subject}, restaurantName=${restaurantName}, error=${result.error}`)
     }
 
     return result
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    logger.error('Error sending restaurant credentials email', {
-      error: errorMessage,
-      email,
-      restaurantName
-    })
+    logger.error('Error sending restaurant credentials email')
     return { success: false, error: errorMessage }
   }
 }
@@ -182,7 +167,7 @@ The Retenly Team
 async function sendEmail(emailData: EmailData): Promise<{ success: boolean; error?: string }> {
   try {
     const transporter = createTransporter()
-    
+
     const mailOptions = {
       from: `${process.env.FROM_NAME || 'Retenly'} <${process.env.FROM_EMAIL || 'noreply@retenly.in'}>`,
       to: emailData.to,
@@ -192,20 +177,12 @@ async function sendEmail(emailData: EmailData): Promise<{ success: boolean; erro
     }
 
     const info = await transporter.sendMail(mailOptions)
-    logger.info('Email sent successfully', {
-      messageId: info.messageId,
-      to: emailData.to,
-      subject: emailData.subject
-    })
+    logger.info(`Email sent successfully: messageId=${info.messageId}, to=${emailData.to}, subject=${emailData.subject}`)
 
     return { success: true }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    logger.error('Failed to send email', {
-      error: errorMessage,
-      to: emailData.to,
-      subject: emailData.subject
-    })
+    logger.error(`Failed to send email: error=${errorMessage}, to=${emailData.to}, subject=${emailData.subject}`)
     return { success: false, error: errorMessage }
   }
 }
