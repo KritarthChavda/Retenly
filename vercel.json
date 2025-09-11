@@ -37,5 +37,8 @@
     "env": {
       "NODE_ENV": "production"
     }
-  }
+  },
+  "redirects": [
+    { "source": "/", "destination": "https://www.retenly.in", "permanent": true }
+  ]
 }
