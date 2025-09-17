@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
 import { verifyToken } from '@/lib/auth-edge'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,26 +51,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Ensure uploads dir exists
-    const uploadsDir = join(process.cwd(), 'public', 'uploads')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
-    // Save file
-    const timestamp = Date.now()
-    const fileExtension = file.name.split('.').pop()
-    const fileName = `${timestamp}-${Math.random().toString(36).substring(2)}.${fileExtension}`
-    const filePath = join(uploadsDir, fileName)
-
+    // 4. Upload to Supabase Storage
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
 
-    // Return response
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('uploads') // bucket name
+      .upload(fileName, buffer, {
+        contentType: file.type,
+        upsert: true,
+      })
+
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError)
+      return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    }
+
+    // 5. Get a public URL (if bucket is public)
+    const { data } = supabase.storage.from('uploads').getPublicUrl(fileName)
+
     return NextResponse.json({
       success: true,
-      url: `/uploads/${fileName}`,
+      url: data.publicUrl,
       filename: fileName,
       uploadedBy: user.type,
     })
