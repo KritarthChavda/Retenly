@@ -1,18 +1,18 @@
 {
   "version": 2,
   "name": "retenly",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/forms/([^/]+)",
-      "dest": "/forms/[slug]"
+      "source": "/forms/:slug",
+      "destination": "/forms/[slug]"
     },
     {
-      "src": "/admin/(.*)",
-      "dest": "/admin/$1"
+      "source": "/admin/:path*",
+      "destination": "/admin/:path*"
     },
     {
-      "src": "/restaurant/(.*)",
-      "dest": "/restaurant/$1"
+      "source": "/restaurant/:path*",
+      "destination": "/restaurant/:path*"
     }
   ],
   "env": {
@@ -26,7 +26,9 @@
     "SMTP_USER": "@smtp_user",
     "SMTP_PASS": "@smtp_pass",
     "FROM_EMAIL": "@from_email",
-    "FROM_NAME": "Retenly"
+    "FROM_NAME": "Retenly",
+    "SUPABASE_URL": "@supabase_url",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key"
   },
   "functions": {
     "src/app/api/**/*.ts": {
