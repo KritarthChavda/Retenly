@@ -60,13 +60,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash the phone number
-    const hashedPhoneNumber = await bcrypt.hash(phoneNumber, 10)
+    // const hashedPhoneNumber = await bcrypt.hash(phoneNumber, 10)
 
     // Create feedback record
     const newFeedback = await prisma.feedback.create({
       data: {
         name: sanitizedName,
-        phoneNumber: hashedPhoneNumber,
+        phoneNumber: phoneNumber,
         experience,
         feedback: sanitizedFeedback,
         formId: targetForm.id,

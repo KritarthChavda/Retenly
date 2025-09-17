@@ -63,8 +63,9 @@ export async function POST(
     })
 
     // Hash the phone number
-    const hashedPhoneNumber = phoneNumber && phoneNumber !== 'N/A' ? await bcrypt.hash(phoneNumber, 10) : ''
+    // const hashedPhoneNumber = phoneNumber && phoneNumber !== 'N/A' ? await bcrypt.hash(phoneNumber, 10) : ''
 
+    
     // Extract experience and rating
     const experience = answers.experience || null
     let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral'
@@ -108,7 +109,7 @@ export async function POST(
       data: {
         formId: form.id,
         name: customerName,
-        phoneNumber: hashedPhoneNumber,
+        phoneNumber: phoneNumber,
         experience: experience,
         sentiment: sentiment,
         rating: rating,
