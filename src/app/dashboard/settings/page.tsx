@@ -1,65 +1,20 @@
 'use client'
 
-import { useState, useEffect } from "react";
 import { Settings as SettingsIcon, User, Bell, Shield, Palette } from "lucide-react";
-import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-interface Restaurant {
-  id: string;
-  name: string;
-  username: string;
-}
+import { useDashboard } from "@/context/DashboardContext";
 
 export default function Settings() {
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchRestaurantData();
-  }, []);
-
-  const fetchRestaurantData = async () => {
-    try {
-      const response = await fetch('/api/restaurant/dashboard');
-      if (response.ok) {
-        const data = await response.json();
-        setRestaurant(data.restaurant);
-      }
-    } catch (error) {
-      console.error('Error fetching restaurant data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const { restaurant } = useDashboard();
 
   if (!restaurant) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Restaurant Not Found</h1>
-          <p className="text-muted-foreground">Unable to load restaurant data.</p>
-        </div>
-      </div>
-    );
+    return null; // Or a loading/error state
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        restaurantName={restaurant.name}
-        restaurantLogo={undefined}
-      />
       
       <main className="container mx-auto px-6 py-8 space-y-8">
         {/* Header Section */}

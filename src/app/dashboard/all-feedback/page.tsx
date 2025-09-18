@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Search, Download, Eye, Star, ChevronLeft, ChevronRight } from "lucide-react";
-import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,24 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface FeedbackItem {
-  id: string;
-  date: string;
-  customerName: string;
-  phone?: string;
-  rating: number;
-  feedback: string;
-  sentiment: "positive" | "negative" | "neutral";
-  tags?: string[];
-}
-
-interface Restaurant {
-  id: string;
-  name: string;
-  username: string;
-  logoUrl?: string;
-}
+import { useDashboard } from "@/context/DashboardContext";
 
 const getSentimentColor = (sentiment: string) => {
   switch (sentiment) {
@@ -56,49 +38,17 @@ const getSentimentLabel = (sentiment: string) => {
 };
 
 export default function AllFeedback() {
+  const { restaurant, allFeedback } = useDashboard();
   const [searchTerm, setSearchTerm] = useState("");
   const [sentimentFilter, setSentimentFilter] = useState("all");
   const [ratingFilter, setRatingFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
-  const [allFeedback, setAllFeedback] = useState<FeedbackItem[]>([]);
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
   const itemsPerPage = 8;
 
-  useEffect(() => {
-    fetchAllFeedback();
-  }, []);
-
-  const fetchAllFeedback = async () => {
-    try {
-      const response = await fetch('/api/restaurant/feedbacks', { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        setRestaurant(data.restaurant);
-        const transformedFeedback = (data.feedbacks || []).map((f: any) => ({
-          id: f.id,
-          date: f.createdAt,
-          customerName: f.name || 'Anonymous',
-          phone: f.phoneNumber || 'N/A',
-          feedback: f.feedback || 'No text feedback',
-          rating: f.rating || 3,
-          sentiment: f.sentiment?.toLowerCase() || 'neutral',
-          tags: []
-        }));
-        setAllFeedback(transformedFeedback);
-      } else {
-        console.error('Failed to fetch feedback data:', response.status);
-        setError('Failed to load feedback data');
-      }
-    } catch (error) {
-      console.error('Error fetching feedback:', error);
-      setError('An error occurred while loading feedback data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  if (!restaurant || !allFeedback) {
+    return null; // Or a loading/error state
+  }
 
   // Filter feedback based on search and filters
   const filteredFeedback = allFeedback.filter(item => {
@@ -129,40 +79,6 @@ export default function AllFeedback() {
     ));
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header restaurantName="Loading..." />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading feedback data...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header restaurantName="Error" />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="text-red-500 mb-4">⚠️</div>
-              <p className="text-red-500 mb-4">{error}</p>
-              <Button onClick={fetchAllFeedback} variant="outline">
-                Try Again
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
   const handleExport = () => {
     const csvContent = [
       "Date,Customer Name,Rating,Sentiment,Feedback",
@@ -187,7 +103,6 @@ export default function AllFeedback() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header restaurantName={restaurant?.name || "Restaurant"} />
       <div className="container mx-auto px-4 py-8">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">

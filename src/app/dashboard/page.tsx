@@ -1,57 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { MessageSquare, Star, TrendingUp, Users } from "lucide-react"
-import { Header } from "@/components/dashboard/Header"
 import { KPICard } from "@/components/dashboard/KPICard"
 import { SentimentChart } from "@/components/dashboard/SentimentChart"
 import { FeedbackHighlights } from "@/components/dashboard/FeedbackHighlights"
 import { RecentFeedbackTable } from "@/components/dashboard/RecentFeedbackTable"
-
-interface Restaurant {
-  id: string
-  name: string
-  username: string
-  logoUrl?: string
-}
-
-interface Analytics {
-  totalFeedbackCount: number
-  sentimentData: {
-    positive: number
-    neutral: number
-    negative: number
-  }
-  csatScore: number
-  npsScore: number
-  mostLovedFeature: string
-  averageRating: number
-  kpiCardData: {
-    totalFeedback: { change: number; changeLabel: string }
-    averageRating: { change: number; changeLabel: string }
-    positiveFeedback: { change: number; changeLabel: string }
-    customerSatisfaction: { change: number; changeLabel: string }
-  }
-}
-
-interface Feedback {
-  id: string
-  text: string
-  experience: string
-  createdAt: string
-  name: string
-  rating?: number
-  sentiment?: "positive" | "negative" | "neutral"
-}
-
-interface Form {
-  id: string
-  title: string
-  feedbackCount: number
-  responseCount: number
-}
-
-const Skeleton = () => <div className="bg-gray-200 rounded-md animate-pulse"></div>
+import { useDashboard } from "@/context/DashboardContext"
 
 /**
  * Main restaurant dashboard page with Loveable design
@@ -59,97 +13,15 @@ const Skeleton = () => <div className="bg-gray-200 rounded-md animate-pulse"></d
  * @returns JSX element containing the restaurant dashboard
  */
 export default function RestaurantDashboard() {
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
-  const [analytics, setAnalytics] = useState<Analytics | null>(null)
-  const [topPositiveFeedbacks, setTopPositiveFeedbacks] = useState<Feedback[]>([])
-  const [topNegativeFeedbacks, setTopNegativeFeedbacks] = useState<Feedback[]>([])
-  const [recentFeedbacks, setRecentFeedbacks] = useState<Feedback[]>([])
-  const [forms, setForms] = useState<Form[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
-    try {
-      const response = await fetch('/api/restaurant/dashboard', { credentials: 'include' })
-      if (response.ok) {
-        const data = await response.json()
-        setRestaurant(data.restaurant)
-        setAnalytics(data.analytics)
-        setTopPositiveFeedbacks(data.topPositiveFeedbacks || [])
-        setTopNegativeFeedbacks(data.topNegativeFeedbacks || [])
-        setRecentFeedbacks(data.recentFeedbacks || [])
-        setForms(data.forms || [])
-      } else {
-        console.error('Failed to fetch dashboard data:', response.status)
-        setError('Failed to load dashboard data')
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-      setError('An error occurred while loading dashboard data')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  if (isLoading) {
-    return (
-        <div className="min-h-screen bg-background p-8">
-            <Header restaurantName="Loading..." />
-            <main className="container mx-auto px-6 py-8 space-y-8">
-                <div className="space-y-2">
-                    <Skeleton />
-                    <Skeleton />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <Skeleton />
-                    <Skeleton />
-                    <Skeleton />
-                    <Skeleton />
-                </div>
-                <div className="grid lg:grid-cols-2 gap-8">
-                    <Skeleton />
-                    <Skeleton />
-                </div>
-                <Skeleton />
-                <Skeleton />
-            </main>
-        </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">❌ Error</h1>
-          <p className="text-muted-foreground">{error}</p>
-        </div>
-      </div>
-    )
-  }
+  const { restaurant, analytics, topPositiveFeedbacks, topNegativeFeedbacks, recentFeedbacks, forms } = useDashboard();
 
   if (!restaurant || !analytics) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Restaurant Not Found</h1>
-          <p className="text-muted-foreground">Unable to load restaurant data.</p>
-        </div>
-      </div>
-    )
+    return null; // Or a loading/error state
   }
-  
+
   if (analytics.totalFeedbackCount === 0) {
     return (
         <div className="min-h-screen bg-background">
-            <Header 
-                restaurantName={restaurant.name}
-                restaurantLogo={restaurant.logoUrl}
-            />
             <main className="container mx-auto px-6 py-8 text-center">
                 <h1 className="text-3xl font-bold text-foreground">Welcome, {restaurant.name}! 👋</h1>
                 <p className="text-muted-foreground mt-2">You don't have any feedback yet.</p>
@@ -212,10 +84,6 @@ export default function RestaurantDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        restaurantName={restaurant.name}
-        restaurantLogo={restaurant.logoUrl}
-      />
       
       <main className="container mx-auto px-6 py-8 space-y-8">
         {/* Welcome Section */}
