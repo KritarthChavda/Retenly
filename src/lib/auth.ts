@@ -210,3 +210,11 @@ export async function requireRestaurant(request: NextRequest): Promise<AuthResul
 
   return { success: true, user: payload }
 }
+
+export async function getRestaurantIdFromToken(request: NextRequest): Promise<string | null> {
+  const result = await requireRestaurant(request);
+  if (result.success && result.user && result.user.restaurantId) {
+    return result.user.restaurantId;
+  }
+  return null;
+}

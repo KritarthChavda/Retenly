@@ -1,13 +1,65 @@
 'use client'
 
+import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, User, Bell, Shield, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboard } from "@/context/DashboardContext";
 
+import { useToast } from '@/hooks/use-toast';
+
+import { ChangePasswordModal } from '@/components/dashboard/ChangePasswordModal';
+
+
 export default function Settings() {
-  const { restaurant } = useDashboard();
+  const { restaurant, setRestaurant } = useDashboard();
+  const { toast } = useToast();
+  const [username, setUsername] = useState('');
+  const [isChangePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+
+
+  useEffect(() => {
+    if (restaurant) {
+      setUsername(restaurant.username);
+    }
+  }, [restaurant]);
+
+  const handleUpdateProfile = async () => {
+    if (!restaurant) return;
+
+    try {
+      const response = await fetch('/api/restaurant/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRestaurant(data.restaurant);
+        toast({
+          title: 'Success',
+          description: 'Your profile has been updated.',
+        });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: 'Error',
+          description: errorData.error || 'Failed to update profile.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   if (!restaurant) {
     return null; // Or a loading/error state
@@ -54,13 +106,13 @@ export default function Settings() {
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Username</label>
                   <Input 
-                    value={restaurant.username} 
+                    value={username} 
+                    onChange={(e) => setUsername(e.target.value)}
                     className="mt-1 bg-background/50 border-glass"
-                    readOnly
                   />
                 </div>
               </div>
-              <Button className="bg-brand-gradient hover:opacity-90">
+              <Button className="bg-brand-gradient hover:opacity-90" onClick={handleUpdateProfile}>
                 Update Profile
               </Button>
             </CardContent>
@@ -123,7 +175,7 @@ export default function Settings() {
                     <p className="font-medium">Change Password</p>
                     <p className="text-sm text-muted-foreground">Update your login credentials</p>
                   </div>
-                  <Button variant="outline" size="sm" className="bg-background/50 border-glass">
+                  <Button variant="outline" size="sm" className="bg-background/50 border-glass" onClick={() => setChangePasswordModalOpen(true)}>
                     Change
                   </Button>
                 </div>
@@ -178,6 +230,9 @@ export default function Settings() {
           </Card>
         </div>
       </main>
+      {isChangePasswordModalOpen && (
+        <ChangePasswordModal onClose={() => setChangePasswordModalOpen(false)} />
+      )}
     </div>
   );
 }

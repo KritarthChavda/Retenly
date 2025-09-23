@@ -58,6 +58,7 @@ interface FeedbackItem {
 
 interface DashboardContextProps {
   restaurant: Restaurant | null;
+  setRestaurant: (restaurant: Restaurant) => void;
   analytics: Analytics | null;
   topPositiveFeedbacks: Feedback[];
   topNegativeFeedbacks: Feedback[];

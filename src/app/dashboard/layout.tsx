@@ -139,6 +139,7 @@ export default function DashboardLayout({
 
   const contextValue = {
     restaurant,
+    setRestaurant,
     analytics,
     topPositiveFeedbacks,
     topNegativeFeedbacks,
