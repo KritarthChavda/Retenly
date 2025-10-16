@@ -63,17 +63,17 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-glass bg-background/80 backdrop-blur-md">
-      <div className="container flex h-16 items-center justify-between px-6">
+    <header className="w-full border-b border-glass bg-background md:sticky md:top-0 md:z-50 md:bg-background/80 md:backdrop-blur-md">
+      <div className="container flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
         {/* Logo & Brand */}
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-2 sm:gap-3">
             <img
               src="/retently-logo.svg"
               alt="Retenly"
-              className="w-16 h-8 object-contain"
+              className="h-10 w-auto object-contain sm:h-10"
             />
-            <span className="text-xl font-bold text-foreground">
+            <span className="sr-only sm:not-sr-only text-lg font-bold text-foreground">
               Retenly
             </span>
           </div>
@@ -85,7 +85,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
         </div>
 
         {/* Restaurant Info & Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative hover:bg-gradient-card border border-transparent hover:border-glass">
             <Bell className="h-5 w-5" />
@@ -96,7 +96,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
           <div className="relative">
             <Button
               variant="ghost"
-              className="flex items-center gap-3 px-3 hover:bg-gradient-card border border-transparent hover:border-glass"
+              className="flex items-center gap-3 px-2 sm:px-3 hover:bg-gradient-card border border-transparent hover:border-glass"
               onClick={() => setMenuOpen((prev) => !prev)}
               aria-expanded={menuOpen}
               aria-haspopup="menu"
@@ -119,7 +119,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
             
             {/* Dropdown Menu */}
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-card/90 backdrop-blur-lg border border-glass rounded-lg shadow-lg transition-all duration-200 z-50">
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-glass bg-background/95 text-foreground shadow-2xl backdrop-blur-md transition-all duration-200 z-[80]">
                 <div className="p-2">
                   <Link href="/dashboard/settings" className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-gradient-card transition-colors">
                     <Settings className="h-4 w-4" />
@@ -152,8 +152,8 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
 
       {/* Mobile Navigation */}
       {isOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-glass">
-          <div className="flex flex-col gap-2 p-4">
+        <div className="md:hidden border-t border-glass bg-background shadow-lg">
+          <div className="flex flex-col gap-2 px-4 py-4 sm:px-6">
             <NavigationItems />
           </div>
         </div>

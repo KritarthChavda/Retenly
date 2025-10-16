@@ -139,7 +139,7 @@ export default function AllFeedback() {
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="All Sentiments" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[100]">
                 <SelectItem value="all">All Sentiments</SelectItem>
                 <SelectItem value="positive">Positive</SelectItem>
                 <SelectItem value="neutral">Neutral</SelectItem>
@@ -150,7 +150,7 @@ export default function AllFeedback() {
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="All Ratings" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[100]">
                 <SelectItem value="all">All Ratings</SelectItem>
                 <SelectItem value="5">5 Stars</SelectItem>
                 <SelectItem value="4">4 Stars</SelectItem>
