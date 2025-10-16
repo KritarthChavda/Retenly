@@ -1,5 +1,6 @@
 import { Groq } from "groq-sdk"
 import { AI_CURATOR_SYSTEM_PROMPT, AI_CURATOR_USER_PROMPT } from "./prompts.js"
+import { prisma } from "../prisma.js"
 
 interface GroqChatCompletionChoice {
   index: number
@@ -121,6 +122,92 @@ export async function curateTopFeedback(
   } catch (error) {
     console.error("[curateTopFeedback] Falling back to heuristics:", error)
     return heuristicCuratedResult(positive, negative, positiveCount, negativeCount)
+  }
+}
+
+export async function regenerateTopFeedbackForRestaurant(restaurantId: string) {
+  const feedbacks = await prisma.feedback.findMany({
+    where: {
+      form: {
+        restaurantId
+      }
+    },
+    select: {
+      id: true,
+      sentiment: true,
+      rating: true,
+      feedback: true,
+      experience: true,
+      createdAt: true
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  })
+
+  const records: FeedbackRecord[] = feedbacks.map((item) => ({
+    id: item.id,
+    sentiment: (item.sentiment as FeedbackRecord["sentiment"]) || "neutral",
+    rating: item.rating,
+    feedback: item.feedback?.trim() || item.experience || "",
+    createdAt: item.createdAt
+  }))
+
+  if (!records.length) {
+    await prisma.topFeedback.deleteMany({ where: { restaurantId } })
+    return null
+  }
+
+  const result = await curateTopFeedback(records)
+
+  const now = new Date()
+  const generatedAt = Number.isNaN(Date.parse(result.generatedAt))
+    ? now
+    : new Date(result.generatedAt)
+  const data = [
+    ...result.positive.map((item) =>
+      buildTopFeedbackRow(restaurantId, "positive", item, result.model, generatedAt, now)
+    ),
+    ...result.negative.map((item) =>
+      buildTopFeedbackRow(restaurantId, "negative", item, result.model, generatedAt, now)
+    )
+  ]
+
+  await prisma.$transaction([
+    prisma.topFeedback.deleteMany({ where: { restaurantId } }),
+    ...(data.length
+      ? [
+          prisma.topFeedback.createMany({
+            data,
+            skipDuplicates: false
+          })
+        ]
+      : [])
+  ])
+
+  return result
+}
+
+function buildTopFeedbackRow(
+  restaurantId: string,
+  type: "positive" | "negative",
+  item: CuratedFeedbackItem,
+  model: string,
+  generatedAt: Date,
+  now: Date
+) {
+  return {
+    restaurantId,
+    feedbackId: item.representativeIds?.[0] ?? null,
+    type,
+    summary: item.summary,
+    themes: JSON.stringify(item.themes ?? []),
+    representativeIds: JSON.stringify(item.representativeIds ?? []),
+    confidence: typeof item.confidence === "number" ? clamp(item.confidence, 0, 1) : 0.7,
+    model,
+    generatedAt,
+    createdAt: now,
+    updatedAt: now
   }
 }
 

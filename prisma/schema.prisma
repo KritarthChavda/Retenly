@@ -36,6 +36,7 @@ model Restaurant {
 
   // Relations
   forms Form[]
+  topHighlights TopFeedback[]
 
   @@map("restaurants")
 }
@@ -104,4 +105,25 @@ model Response {
   form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
 
   @@map("responses")
+}
+
+model TopFeedback {
+  id             String    @id @default(cuid())
+  restaurantId   String
+  feedbackId     String?
+  type           String
+  summary        String
+  themes         String    // Stored as JSON array string
+  representativeIds String // Stored as JSON array string
+  confidence     Float
+  model          String
+  generatedAt    DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, type])
+  @@map("top_feedback")
 }

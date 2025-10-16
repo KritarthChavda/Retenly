@@ -13,7 +13,7 @@ import { useDashboard } from "@/context/DashboardContext"
  * @returns JSX element containing the restaurant dashboard
  */
 export default function RestaurantDashboard() {
-  const { restaurant, analytics, topPositiveFeedbacks, topNegativeFeedbacks, recentFeedbacks, forms } = useDashboard();
+  const { restaurant, analytics, topHighlights, recentFeedbacks, forms } = useDashboard();
 
   if (!restaurant || !analytics) {
     return null; // Or a loading/error state
@@ -54,31 +54,13 @@ export default function RestaurantDashboard() {
   ]
 
   // Transform feedback data for the highlights component
-  const positiveFeedbackForHighlights = topPositiveFeedbacks.map(feedback => ({
-    id: feedback.id,
-    customerName: feedback.name,
-    rating: feedback.rating || 5,
-    feedback: feedback.text,
-    date: feedback.createdAt,
-    sentiment: "positive" as const
-  }))
-
-  const negativeFeedbackForHighlights = topNegativeFeedbacks.map(feedback => ({
-    id: feedback.id,
-    customerName: feedback.name,
-    rating: feedback.rating || 2,
-    feedback: feedback.text,
-    date: feedback.createdAt,
-    sentiment: "negative" as const
-  }))
-
   // Transform recent feedback for the table
   const recentFeedbackForTable = recentFeedbacks.map(feedback => ({
     id: feedback.id,
-    date: feedback.createdAt,
-    customerName: feedback.name,
+    date: feedback.date,
+    customerName: feedback.customerName,
     rating: feedback.rating || 3,
-    feedback: feedback.text,
+    feedback: feedback.feedback,
     sentiment: feedback.sentiment || "neutral"
   }))
 
@@ -167,10 +149,7 @@ export default function RestaurantDashboard() {
         {/* Feedback Highlights */}
         <div className="p-6 rounded-2xl border border-glass bg-gradient-card backdrop-blur-sm">
           <h2 className="text-xl font-semibold mb-6">Feedback Highlights</h2>
-          <FeedbackHighlights 
-            positiveFeedback={positiveFeedbackForHighlights}
-            negativeFeedback={negativeFeedbackForHighlights}
-          />
+          <FeedbackHighlights highlights={topHighlights} />
         </div>
 
         {/* Recent Feedback Table */}

@@ -31,14 +31,13 @@ interface Analytics {
   }
 }
 
-interface Feedback {
+interface FeedbackHighlight {
   id: string
-  text: string
-  experience: string
-  createdAt: string
-  name: string
-  rating?: number
-  sentiment?: "positive" | "negative" | "neutral"
+  summary: string
+  generatedAt: string
+  themes: string[]
+  confidence: number
+  type: "positive" | "negative"
 }
 
 interface Form {
@@ -66,9 +65,8 @@ export default function DashboardLayout({
 }) {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
-  const [topPositiveFeedbacks, setTopPositiveFeedbacks] = useState<Feedback[]>([])
-  const [topNegativeFeedbacks, setTopNegativeFeedbacks] = useState<Feedback[]>([])
-  const [recentFeedbacks, setRecentFeedbacks] = useState<Feedback[]>([])
+  const [topHighlights, setTopHighlights] = useState<FeedbackHighlight[]>([])
+  const [recentFeedbacks, setRecentFeedbacks] = useState<FeedbackItem[]>([])
   const [forms, setForms] = useState<Form[]>([])
   const [allFeedback, setAllFeedback] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(true)
@@ -85,9 +83,26 @@ export default function DashboardLayout({
         const data = await response.json()
         setRestaurant(data.restaurant)
         setAnalytics(data.analytics)
-        setTopPositiveFeedbacks(data.topPositiveFeedbacks || [])
-        setTopNegativeFeedbacks(data.topNegativeFeedbacks || [])
-        setRecentFeedbacks(data.recentFeedbacks || [])
+        const topHighlights = (data.topHighlights || []).map((item: any) => ({
+          id: item.id,
+          summary: item.summary,
+          generatedAt: item.generatedAt,
+          themes: item.themes || [],
+          confidence: item.confidence ?? 0.6,
+          type: item.type === 'negative' ? 'negative' : 'positive'
+        }))
+        setTopHighlights(topHighlights)
+        const recent = (data.recentFeedbacks || []).map((f: any) => ({
+          id: f.id,
+          date: f.createdAt,
+          customerName: f.name || 'Anonymous',
+          phone: f.phoneNumber || 'N/A',
+          feedback: f.text || 'No text feedback',
+          rating: f.rating || 3,
+          sentiment: (f.sentiment || 'neutral').toLowerCase(),
+          tags: []
+        }))
+        setRecentFeedbacks(recent)
         setForms(data.forms || [])
         const transformedFeedback = (data.allFeedbacks || []).map((f: any) => ({
           id: f.id,
@@ -142,8 +157,7 @@ export default function DashboardLayout({
     restaurant,
     setRestaurant,
     analytics,
-    topPositiveFeedbacks,
-    topNegativeFeedbacks,
+    topHighlights,
     recentFeedbacks,
     forms,
     allFeedback,

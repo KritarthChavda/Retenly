@@ -8,6 +8,16 @@ import {
 } from '@/lib/sentiment'
 import { verifyToken } from '@/lib/auth-edge'
 
+function safeParseThemes(serialized: string | null | undefined): string[] {
+  if (!serialized) return []
+  try {
+    const parsed = JSON.parse(serialized)
+    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : []
+  } catch {
+    return []
+  }
+}
+
 /**
  * GET: Fetch restaurant dashboard data including analytics and feedback
  * 
@@ -98,29 +108,50 @@ export async function GET(request: NextRequest) {
       ? Object.entries(keywordCounts).sort(([,a], [,b]) => b - a)[0][0]
       : 'No feedback yet'
 
-    const topPositiveFeedbacks = allFeedbacks
-      .filter(f => f.experience === 'YO!' || f.experience === 'Pretty good')
-      .slice(0, 3)
-      .map(f => ({
-        id: f.id,
-        text: f.feedback || 'No text feedback',
-        experience: f.experience,
-        createdAt: f.createdAt,
-        name: f.name,
-        rating: f.rating
-      }))
+    const curatedHighlights = await prisma.topFeedback.findMany({
+      where: { restaurantId },
+      orderBy: [
+        { generatedAt: 'desc' },
+        { confidence: 'desc' }
+      ]
+    })
 
-    const topNegativeFeedbacks = allFeedbacks
-      .filter(f => f.experience === 'Not great')
-      .slice(0, 3)
-      .map(f => ({
-        id: f.id,
-        text: f.feedback || 'No text feedback',
-        experience: f.experience,
-        createdAt: f.createdAt,
-        name: f.name,
-        rating: f.rating
-      }))
+    let topHighlights = curatedHighlights.slice(0, 6).map((item) => ({
+      id: item.feedbackId ?? item.id,
+      summary: item.summary,
+      generatedAt: item.generatedAt,
+      themes: safeParseThemes(item.themes),
+      confidence: item.confidence,
+      type: item.type === 'negative' ? 'negative' as const : 'positive' as const
+    }))
+
+    if (!topHighlights.length) {
+      const fallbackPositive = allFeedbacks
+        .filter(f => f.experience === 'YO!' || f.experience === 'Pretty good')
+        .slice(0, 3)
+        .map((f) => ({
+          id: f.id,
+          summary: f.feedback || f.experience || 'Guests reported a positive experience.',
+          generatedAt: f.createdAt,
+          themes: [],
+          confidence: 0.6,
+          type: 'positive' as const
+        }))
+
+      const fallbackNegative = allFeedbacks
+        .filter(f => f.experience === 'Not great' || f.experience === 'Poor')
+        .slice(0, 3)
+        .map((f) => ({
+          id: f.id,
+          summary: f.feedback || f.experience || 'Guests reported issues requiring attention.',
+          generatedAt: f.createdAt,
+          themes: [],
+          confidence: 0.6,
+          type: 'negative' as const
+        }))
+
+      topHighlights = [...fallbackPositive, ...fallbackNegative]
+    }
 
     const sentimentData = {
       positive: sentimentDistribution.positive,
@@ -176,8 +207,7 @@ export async function GET(request: NextRequest) {
             repeatFeedbackRate: { change: 3, changeLabel: 'vs last month' }
         }
       },
-      topPositiveFeedbacks,
-      topNegativeFeedbacks,
+      topHighlights,
       recentFeedbacks: allFeedbacks.slice(0, 10).map(f => ({
         id: f.id,
         name: f.name || 'Anonymous',
@@ -185,7 +215,8 @@ export async function GET(request: NextRequest) {
         experience: f.experience,
         rating: f.rating || 3,
         sentiment: f.sentiment || 'neutral',
-        createdAt: f.createdAt
+        createdAt: f.createdAt,
+        phoneNumber: f.phoneNumber || 'N/A'
       })),
       forms: forms.map(form => ({
         id: form.id,
@@ -198,6 +229,9 @@ export async function GET(request: NextRequest) {
     if (includeAllFeedbacks) {
         responseData.allFeedbacks = allFeedbacks;
     }
+
+    responseData.topHighlightsGeneratedAt =
+      curatedHighlights[0]?.generatedAt ?? topHighlights[0]?.generatedAt ?? null
 
     return NextResponse.json(responseData);
   } catch (error) {
