@@ -128,6 +128,23 @@ export async function GET(request: NextRequest) {
       negative: sentimentDistribution.negative
     }
 
+    const phoneCounts = allFeedbacks.reduce((acc, feedback) => {
+      const rawPhone = typeof feedback.phoneNumber === 'string' ? feedback.phoneNumber.trim() : ''
+      if (!rawPhone || rawPhone.toLowerCase() === 'n/a') {
+        return acc
+      }
+      const normalizedPhone = rawPhone.replace(/\s+/g, '')
+      acc.set(normalizedPhone, (acc.get(normalizedPhone) ?? 0) + 1)
+      return acc
+    }, new Map<string, number>())
+
+    const totalUniqueCustomers = phoneCounts.size
+    const repeatCustomers = Array.from(phoneCounts.values()).filter(count => count > 1).length
+    const repeatFeedbackRate =
+      totalUniqueCustomers > 0
+        ? Math.round((repeatCustomers / totalUniqueCustomers) * 100)
+        : 0
+
     const forms = await prisma.form.findMany({
         where: { restaurantId },
         include: {
@@ -151,11 +168,12 @@ export async function GET(request: NextRequest) {
         npsScore,
         mostLovedFeature,
         averageRating,
+        repeatFeedbackRate,
         kpiCardData: {
             totalFeedback: { change: 12, changeLabel: 'vs last month' },
             averageRating: { change: 8, changeLabel: 'vs last month' },
             positiveFeedback: { change: 5, changeLabel: 'vs last month' },
-            customerSatisfaction: { change: -2, changeLabel: 'vs last month' }
+            repeatFeedbackRate: { change: 3, changeLabel: 'vs last month' }
         }
       },
       topPositiveFeedbacks,

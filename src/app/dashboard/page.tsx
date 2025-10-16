@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageSquare, Star, TrendingUp, Users } from "lucide-react"
+import { MessageSquare, Star, TrendingUp, RefreshCcw } from "lucide-react"
 import { KPICard } from "@/components/dashboard/KPICard"
 import { SentimentChart } from "@/components/dashboard/SentimentChart"
 import { FeedbackHighlights } from "@/components/dashboard/FeedbackHighlights"
@@ -123,11 +123,11 @@ export default function RestaurantDashboard() {
             variant="positive"
           />
           <KPICard
-            title="Customer Satisfaction"
-            value={`${analytics.csatScore}%`}
-            change={analytics.kpiCardData.customerSatisfaction.change}
-            changeLabel={analytics.kpiCardData.customerSatisfaction.changeLabel}
-            icon={<Users className="w-6 h-6" />}
+            title="Repeat Feedback Rate"
+            value={`${analytics.repeatFeedbackRate}%`}
+            change={analytics.kpiCardData.repeatFeedbackRate.change}
+            changeLabel={analytics.kpiCardData.repeatFeedbackRate.changeLabel}
+            icon={<RefreshCcw className="w-6 h-6" />}
             variant="neutral"
           />
         </div>
