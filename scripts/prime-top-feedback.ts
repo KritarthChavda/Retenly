@@ -10,20 +10,31 @@ async function main() {
   console.log(`Found ${restaurants.length} restaurants. Checking highlights...`)
 
   for (const restaurant of restaurants) {
-    const highlightsCount = await prisma.topFeedback.count({
+    const existingCount = await prisma.topFeedback.count({
       where: { restaurantId: restaurant.id }
     })
 
-    if (highlightsCount === 0) {
-      console.log(`Generating highlights for ${restaurant.name} (${restaurant.id})`)
-      try {
-        await regenerateTopFeedbackForRestaurant(restaurant.id)
-        console.log("✔ Generated")
-      } catch (error) {
-        console.error(`✖ Failed for ${restaurant.name}`, error)
+    console.log(
+      `Regenerating highlights for ${restaurant.name} (${restaurant.id}) — existing rows: ${existingCount}`
+    )
+
+    try {
+      const result = await regenerateTopFeedbackForRestaurant(restaurant.id)
+      if (result) {
+        const positiveCount = result.positive.length
+        const negativeCount = result.negative.length
+        console.log(`✔ Regenerated (${positiveCount} positive, ${negativeCount} negative)`)
+
+        if (positiveCount !== 3 || negativeCount !== 3) {
+          console.warn(
+            `⚠️ Expected 3 highlights per sentiment but received ${positiveCount} positive and ${negativeCount} negative`
+          )
+        }
+      } else {
+        console.log("ℹ No feedback available to regenerate highlights")
       }
-    } else {
-      console.log(`Skipping ${restaurant.name}, ${highlightsCount} highlight rows exist`)
+    } catch (error) {
+      console.error(`✖ Failed for ${restaurant.name}`, error)
     }
   }
 }

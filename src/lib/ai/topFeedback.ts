@@ -49,7 +49,6 @@ interface CuratorOptions {
 const DEFAULT_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b"
 const DEFAULT_POSITIVE_COUNT = 3
 const DEFAULT_NEGATIVE_COUNT = 3
-
 const STOP_WORDS = new Set([
   "the",
   "a",
@@ -86,6 +85,18 @@ const FALLBACK_THEMES = {
   positive: ["Service", "Food quality", "Ambience", "Staff friendliness"],
   negative: ["Wait times", "Order accuracy", "Cleanliness", "Communication"]
 }
+
+const POSITIVE_EXPERIENCES = new Set(["yo!", "pretty good", "great", "excellent", "amazing"])
+const NEGATIVE_EXPERIENCES = new Set(["not great", "poor", "bad", "terrible", "awful"])
+
+const FEEDBACK_SELECTION = {
+  id: true,
+  sentiment: true,
+  rating: true,
+  feedback: true,
+  experience: true,
+  createdAt: true
+} as const
 
 export async function curateTopFeedback(
   feedbacks: FeedbackRecord[],
@@ -126,66 +137,107 @@ export async function curateTopFeedback(
 }
 
 export async function regenerateTopFeedbackForRestaurant(restaurantId: string) {
-  const feedbacks = await prisma.feedback.findMany({
+  const lastHighlight = await prisma.topFeedback.findFirst({
+    where: { restaurantId },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true }
+  })
+
+  const rawFeedbacks = await prisma.feedback.findMany({
     where: {
       form: {
         restaurantId
-      }
+      },
+      createdAt: lastHighlight?.createdAt ? { gt: lastHighlight.createdAt } : undefined
     },
-    select: {
-      id: true,
-      sentiment: true,
-      rating: true,
-      feedback: true,
-      experience: true,
-      createdAt: true
-    },
+    select: FEEDBACK_SELECTION,
     orderBy: {
       createdAt: "desc"
     }
   })
 
-  const records: FeedbackRecord[] = feedbacks.map((item) => ({
-    id: item.id,
-    sentiment: (item.sentiment as FeedbackRecord["sentiment"]) || "neutral",
-    rating: item.rating,
-    feedback: item.feedback?.trim() || item.experience || "",
-    createdAt: item.createdAt
-  }))
+  const normalizedFeedbacks = normalizeFeedbackBatch(rawFeedbacks)
+
+  const positiveCandidates = normalizedFeedbacks.filter(
+    (item) => item.normalizedSentiment === "positive"
+  )
+  const negativeCandidates = normalizedFeedbacks.filter(
+    (item) => item.normalizedSentiment === "negative"
+  )
+
+  let positiveRecords = positiveCandidates
+    .slice(0, DEFAULT_POSITIVE_COUNT)
+    .map((item) => buildFeedbackRecord(item, "positive"))
+  let negativeRecords = negativeCandidates
+    .slice(0, DEFAULT_NEGATIVE_COUNT)
+    .map((item) => buildFeedbackRecord(item, "negative"))
+
+  const usedIds = new Set([...positiveRecords.map((item) => item.id), ...negativeRecords.map((item) => item.id)])
+
+  if (positiveRecords.length < DEFAULT_POSITIVE_COUNT) {
+    const needed = DEFAULT_POSITIVE_COUNT - positiveRecords.length
+    const fallback = await loadAdditionalFeedback(
+      restaurantId,
+      "positive",
+      lastHighlight?.createdAt ?? null,
+      usedIds,
+      needed
+    )
+    positiveRecords = positiveRecords.concat(fallback)
+  }
+
+  if (negativeRecords.length < DEFAULT_NEGATIVE_COUNT) {
+    const needed = DEFAULT_NEGATIVE_COUNT - negativeRecords.length
+    const fallback = await loadAdditionalFeedback(
+      restaurantId,
+      "negative",
+      lastHighlight?.createdAt ?? null,
+      usedIds,
+      needed
+    )
+    negativeRecords = negativeRecords.concat(fallback)
+  }
+
+  const records: FeedbackRecord[] = [...positiveRecords, ...negativeRecords]
 
   if (!records.length) {
-    await prisma.topFeedback.deleteMany({ where: { restaurantId } })
     return null
   }
 
-  const result = await curateTopFeedback(records)
+  const positiveTarget = DEFAULT_POSITIVE_COUNT
+  const negativeTarget = DEFAULT_NEGATIVE_COUNT
+
+  const result = await curateTopFeedback(records, {
+    positiveCount: positiveTarget,
+    negativeCount: negativeTarget
+  })
+  const limitedResult: CuratedFeedbackResult = {
+    ...result,
+    positive: result.positive.slice(0, positiveTarget),
+    negative: result.negative.slice(0, negativeTarget)
+  }
 
   const now = new Date()
-  const generatedAt = Number.isNaN(Date.parse(result.generatedAt))
+  const generatedAt = Number.isNaN(Date.parse(limitedResult.generatedAt))
     ? now
-    : new Date(result.generatedAt)
+    : new Date(limitedResult.generatedAt)
   const data = [
-    ...result.positive.map((item) =>
-      buildTopFeedbackRow(restaurantId, "positive", item, result.model, generatedAt, now)
+    ...limitedResult.positive.map((item) =>
+      buildTopFeedbackRow(restaurantId, "positive", item, limitedResult.model, generatedAt, now)
     ),
-    ...result.negative.map((item) =>
-      buildTopFeedbackRow(restaurantId, "negative", item, result.model, generatedAt, now)
+    ...limitedResult.negative.map((item) =>
+      buildTopFeedbackRow(restaurantId, "negative", item, limitedResult.model, generatedAt, now)
     )
   ]
 
-  await prisma.$transaction([
-    prisma.topFeedback.deleteMany({ where: { restaurantId } }),
-    ...(data.length
-      ? [
-          prisma.topFeedback.createMany({
-            data,
-            skipDuplicates: false
-          })
-        ]
-      : [])
-  ])
+  if (data.length) {
+    await prisma.topFeedback.createMany({
+      data,
+      skipDuplicates: false
+    })
+  }
 
-  return result
+  return limitedResult
 }
 
 function buildTopFeedbackRow(
@@ -381,4 +433,134 @@ function extractKeywords(text: string, sentiment: "positive" | "negative") {
   }
 
   return sorted
+}
+
+function normalizeFeedbackSentiment(item: {
+  sentiment: string | null
+  experience: string | null
+  rating: number | null
+}): FeedbackRecord["sentiment"] {
+  const direct = (item.sentiment ?? "").toLowerCase()
+  if (direct === "positive" || direct === "negative") {
+    return direct
+  }
+
+  if (direct === "neutral") {
+    const ratingSentiment = ratingToSentiment(item.rating)
+    if (ratingSentiment !== "neutral") {
+      return ratingSentiment
+    }
+  }
+
+  const ratingBased = ratingToSentiment(item.rating)
+  if (ratingBased !== "neutral") {
+    return ratingBased
+  }
+
+  const experience = (item.experience ?? "").toLowerCase()
+  if (POSITIVE_EXPERIENCES.has(experience)) {
+    return "positive"
+  }
+  if (NEGATIVE_EXPERIENCES.has(experience)) {
+    return "negative"
+  }
+
+  return "neutral"
+}
+
+function ratingToSentiment(rating: number | null): FeedbackRecord["sentiment"] {
+  if (typeof rating === "number") {
+    if (rating >= 4) {
+      return "positive"
+    }
+    if (rating > 0 && rating <= 2) {
+      return "negative"
+    }
+  }
+
+  return "neutral"
+}
+
+function buildFeedbackRecord(
+  item: {
+    id: string
+    rating: number | null
+    feedback: string | null
+    experience: string | null
+    createdAt: Date
+  },
+  sentiment: FeedbackRecord["sentiment"]
+): FeedbackRecord {
+  return {
+    id: item.id,
+    sentiment,
+    rating: item.rating,
+    feedback: item.feedback?.trim() || item.experience || "",
+    createdAt: item.createdAt
+  }
+}
+
+type NormalizedFeedback = {
+  id: string
+  sentiment: string | null
+  rating: number | null
+  feedback: string | null
+  experience: string | null
+  createdAt: Date
+  normalizedSentiment: FeedbackRecord["sentiment"]
+}
+
+function normalizeFeedbackBatch(
+  items: Array<{
+    id: string
+    sentiment: string | null
+    rating: number | null
+    feedback: string | null
+    experience: string | null
+    createdAt: Date
+  }>
+): NormalizedFeedback[] {
+  return items.map((item) => ({
+    ...item,
+    normalizedSentiment: normalizeFeedbackSentiment(item)
+  }))
+}
+
+async function loadAdditionalFeedback(
+  restaurantId: string,
+  sentiment: FeedbackRecord["sentiment"],
+  beforeDate: Date | null,
+  usedIds: Set<string>,
+  needed: number
+): Promise<FeedbackRecord[]> {
+  if (needed <= 0) {
+    return []
+  }
+
+  const raw = await prisma.feedback.findMany({
+    where: {
+      form: {
+        restaurantId
+      },
+      id: usedIds.size ? { notIn: Array.from(usedIds) } : undefined,
+      createdAt: beforeDate ? { lte: beforeDate } : undefined
+    },
+    select: FEEDBACK_SELECTION,
+    orderBy: {
+      createdAt: "desc"
+    },
+    take: needed * 5
+  })
+
+  const normalized = normalizeFeedbackBatch(raw).filter(
+    (item) => item.normalizedSentiment === sentiment && !usedIds.has(item.id)
+  )
+
+  const selected = normalized.slice(0, needed).map((item) => buildFeedbackRecord(item, sentiment))
+
+  for (const record of selected) {
+    usedIds.add(record.id)
+  }
+
+  return selected
 }
