@@ -10,12 +10,16 @@ async function main() {
   console.log(`Found ${restaurants.length} restaurants. Checking highlights...`)
 
   for (const restaurant of restaurants) {
+    const totalFeedback = await prisma.feedback.count({
+      where: { form: { restaurantId: restaurant.id } }
+    })
+
     const existingCount = await prisma.topFeedback.count({
       where: { restaurantId: restaurant.id }
     })
 
     console.log(
-      `Regenerating highlights for ${restaurant.name} (${restaurant.id}) — existing rows: ${existingCount}`
+      `Regenerating highlights for ${restaurant.name} (${restaurant.id}) — feedback rows: ${totalFeedback}, existing highlights: ${existingCount}`
     )
 
     try {

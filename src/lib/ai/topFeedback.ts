@@ -86,9 +86,6 @@ const FALLBACK_THEMES = {
   negative: ["Wait times", "Order accuracy", "Cleanliness", "Communication"]
 }
 
-const POSITIVE_EXPERIENCES = new Set(["yo!", "pretty good", "great", "excellent", "amazing"])
-const NEGATIVE_EXPERIENCES = new Set(["not great", "poor", "bad", "terrible", "awful"])
-
 const FEEDBACK_SELECTION = {
   id: true,
   sentiment: true,
@@ -156,53 +153,21 @@ export async function regenerateTopFeedbackForRestaurant(restaurantId: string) {
     }
   })
 
-  const normalizedFeedbacks = normalizeFeedbackBatch(rawFeedbacks)
-
-  const positiveCandidates = normalizedFeedbacks.filter(
-    (item) => item.normalizedSentiment === "positive"
-  )
-  const negativeCandidates = normalizedFeedbacks.filter(
-    (item) => item.normalizedSentiment === "negative"
+  console.log(
+    `[regenerateTopFeedback] Fetched ${rawFeedbacks.length} feedback rows for ${restaurantId}`
   )
 
-  let positiveRecords = positiveCandidates
-    .slice(0, DEFAULT_POSITIVE_COUNT)
-    .map((item) => buildFeedbackRecord(item, "positive"))
-  let negativeRecords = negativeCandidates
-    .slice(0, DEFAULT_NEGATIVE_COUNT)
-    .map((item) => buildFeedbackRecord(item, "negative"))
-
-  const usedIds = new Set([...positiveRecords.map((item) => item.id), ...negativeRecords.map((item) => item.id)])
-
-  if (positiveRecords.length < DEFAULT_POSITIVE_COUNT) {
-    const needed = DEFAULT_POSITIVE_COUNT - positiveRecords.length
-    const fallback = await loadAdditionalFeedback(
-      restaurantId,
-      "positive",
-      lastHighlight?.createdAt ?? null,
-      usedIds,
-      needed
-    )
-    positiveRecords = positiveRecords.concat(fallback)
-  }
-
-  if (negativeRecords.length < DEFAULT_NEGATIVE_COUNT) {
-    const needed = DEFAULT_NEGATIVE_COUNT - negativeRecords.length
-    const fallback = await loadAdditionalFeedback(
-      restaurantId,
-      "negative",
-      lastHighlight?.createdAt ?? null,
-      usedIds,
-      needed
-    )
-    negativeRecords = negativeRecords.concat(fallback)
-  }
-
-  const records: FeedbackRecord[] = [...positiveRecords, ...negativeRecords]
-
-  if (!records.length) {
+  if (!rawFeedbacks.length) {
     return null
   }
+
+  const records: FeedbackRecord[] = rawFeedbacks.map((item) => ({
+    id: item.id,
+    sentiment: (item.sentiment as FeedbackRecord["sentiment"]) || "neutral",
+    rating: item.rating,
+    feedback: item.feedback?.trim() || item.experience || "",
+    createdAt: item.createdAt
+  }))
 
   const positiveTarget = DEFAULT_POSITIVE_COUNT
   const negativeTarget = DEFAULT_NEGATIVE_COUNT
@@ -211,10 +176,32 @@ export async function regenerateTopFeedbackForRestaurant(restaurantId: string) {
     positiveCount: positiveTarget,
     negativeCount: negativeTarget
   })
+  const heuristicFallback = heuristicCuratedResult(
+    records.filter((item) => item.sentiment === "positive"),
+    records.filter((item) => item.sentiment === "negative"),
+    positiveTarget,
+    negativeTarget
+  )
+
+  const finalPositive = result.positive.length >= positiveTarget
+    ? result.positive.slice(0, positiveTarget)
+    : heuristicFallback.positive.slice(0, positiveTarget)
+
+  const finalNegative = result.negative.length >= negativeTarget
+    ? result.negative.slice(0, negativeTarget)
+    : heuristicFallback.negative.slice(0, negativeTarget)
+
+  if (finalPositive.length < positiveTarget || finalNegative.length < negativeTarget) {
+    console.warn(
+      `[regenerateTopFeedback] Using heuristic fallback for ${restaurantId} (pos=${finalPositive.length}, neg=${finalNegative.length})`
+    )
+  }
+
   const limitedResult: CuratedFeedbackResult = {
-    ...result,
-    positive: result.positive.slice(0, positiveTarget),
-    negative: result.negative.slice(0, negativeTarget)
+    positive: finalPositive,
+    negative: finalNegative,
+    model: result.model,
+    generatedAt: result.generatedAt
   }
 
   const now = new Date()
@@ -275,6 +262,10 @@ async function callGroq(
   const client = new Groq({
     apiKey: process.env.GROQ_API_KEY
   })
+
+  console.log(
+    `[callGroq] Generating summaries for ${feedbacks.length} feedbacks (pos=${params.positiveCount}, neg=${params.negativeCount})`
+  )
 
   const completion = await client.chat.completions.create({
     model: params.model,
@@ -435,132 +426,4 @@ function extractKeywords(text: string, sentiment: "positive" | "negative") {
   return sorted
 }
 
-function normalizeFeedbackSentiment(item: {
-  sentiment: string | null
-  experience: string | null
-  rating: number | null
-}): FeedbackRecord["sentiment"] {
-  const direct = (item.sentiment ?? "").toLowerCase()
-  if (direct === "positive" || direct === "negative") {
-    return direct
-  }
-
-  if (direct === "neutral") {
-    const ratingSentiment = ratingToSentiment(item.rating)
-    if (ratingSentiment !== "neutral") {
-      return ratingSentiment
-    }
-  }
-
-  const ratingBased = ratingToSentiment(item.rating)
-  if (ratingBased !== "neutral") {
-    return ratingBased
-  }
-
-  const experience = (item.experience ?? "").toLowerCase()
-  if (POSITIVE_EXPERIENCES.has(experience)) {
-    return "positive"
-  }
-  if (NEGATIVE_EXPERIENCES.has(experience)) {
-    return "negative"
-  }
-
-  return "neutral"
-}
-
-function ratingToSentiment(rating: number | null): FeedbackRecord["sentiment"] {
-  if (typeof rating === "number") {
-    if (rating >= 4) {
-      return "positive"
-    }
-    if (rating > 0 && rating <= 2) {
-      return "negative"
-    }
-  }
-
-  return "neutral"
-}
-
-function buildFeedbackRecord(
-  item: {
-    id: string
-    rating: number | null
-    feedback: string | null
-    experience: string | null
-    createdAt: Date
-  },
-  sentiment: FeedbackRecord["sentiment"]
-): FeedbackRecord {
-  return {
-    id: item.id,
-    sentiment,
-    rating: item.rating,
-    feedback: item.feedback?.trim() || item.experience || "",
-    createdAt: item.createdAt
-  }
-}
-
-type NormalizedFeedback = {
-  id: string
-  sentiment: string | null
-  rating: number | null
-  feedback: string | null
-  experience: string | null
-  createdAt: Date
-  normalizedSentiment: FeedbackRecord["sentiment"]
-}
-
-function normalizeFeedbackBatch(
-  items: Array<{
-    id: string
-    sentiment: string | null
-    rating: number | null
-    feedback: string | null
-    experience: string | null
-    createdAt: Date
-  }>
-): NormalizedFeedback[] {
-  return items.map((item) => ({
-    ...item,
-    normalizedSentiment: normalizeFeedbackSentiment(item)
-  }))
-}
-
-async function loadAdditionalFeedback(
-  restaurantId: string,
-  sentiment: FeedbackRecord["sentiment"],
-  beforeDate: Date | null,
-  usedIds: Set<string>,
-  needed: number
-): Promise<FeedbackRecord[]> {
-  if (needed <= 0) {
-    return []
-  }
-
-  const raw = await prisma.feedback.findMany({
-    where: {
-      form: {
-        restaurantId
-      },
-      id: usedIds.size ? { notIn: Array.from(usedIds) } : undefined,
-      createdAt: beforeDate ? { lte: beforeDate } : undefined
-    },
-    select: FEEDBACK_SELECTION,
-    orderBy: {
-      createdAt: "desc"
-    },
-    take: needed * 5
-  })
-
-  const normalized = normalizeFeedbackBatch(raw).filter(
-    (item) => item.normalizedSentiment === sentiment && !usedIds.has(item.id)
-  )
-
-  const selected = normalized.slice(0, needed).map((item) => buildFeedbackRecord(item, sentiment))
-
-  for (const record of selected) {
-    usedIds.add(record.id)
-  }
-
-  return selected
-}
+// Sentiment normalization logic is intentionally removed so we rely on stored sentiment values.
