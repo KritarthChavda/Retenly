@@ -17,6 +17,20 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
   const pathname = usePathname();
   const router = useRouter();
 
+  const toggleProfileMenu = () => {
+    if (!menuOpen) {
+      setIsOpen(false);
+    }
+    setMenuOpen((prev) => !prev);
+  };
+
+  const toggleMobileMenu = () => {
+    if (!isOpen) {
+      setMenuOpen(false);
+    }
+    setIsOpen((prev) => !prev);
+  };
+
   const handleLogout = async () => {
     try {
       await fetch('/api/restaurant/logout', { method: 'POST' });
@@ -97,7 +111,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
             <Button
               variant="ghost"
               className="flex items-center gap-3 px-2 sm:px-3 hover:bg-gradient-card border border-transparent hover:border-glass"
-              onClick={() => setMenuOpen((prev) => !prev)}
+              onClick={toggleProfileMenu}
               aria-expanded={menuOpen}
               aria-haspopup="menu"
             >
@@ -143,7 +157,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
             variant="ghost" 
             size="icon" 
             className="md:hidden hover:bg-gradient-card border border-transparent hover:border-glass"
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={toggleMobileMenu}
           >
             <Menu className="h-5 w-5" />
           </Button>
