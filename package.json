@@ -12,7 +12,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "backfill": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/backfill-topfeedback-windows.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
@@ -36,6 +37,7 @@
     "lucide-react": "^0.539.0",
     "multer": "^2.0.2",
     "next": "15.4.5",
+    "node-cron": "^4.2.1",
     "nodemailer": "^6.9.8",
     "openai": "^6.3.0",
     "pino": "^8.17.2",

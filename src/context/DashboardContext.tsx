@@ -56,6 +56,8 @@ interface FeedbackItem {
   tags?: string[];
 }
 
+export type FeedbackWindow = "7d" | "30d" | "90d"
+
 interface DashboardContextProps {
   restaurant: Restaurant | null
   setRestaurant: (restaurant: Restaurant) => void
@@ -64,6 +66,9 @@ interface DashboardContextProps {
   recentFeedbacks: FeedbackItem[]
   forms: Form[]
   allFeedback: FeedbackItem[]
+  feedbackWindow: FeedbackWindow
+  setFeedbackWindow: (window: FeedbackWindow) => void
+  isHighlightsLoading: boolean
 }
 
 const DashboardContext = createContext<DashboardContextProps | undefined>(undefined);

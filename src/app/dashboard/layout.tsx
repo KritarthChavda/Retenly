@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { DashboardProvider } from '@/context/DashboardContext'
+import { DashboardProvider, FeedbackWindow } from '@/context/DashboardContext'
 
 interface Restaurant {
   id: string
@@ -70,19 +70,34 @@ export default function DashboardLayout({
   const [forms, setForms] = useState<Form[]>([])
   const [allFeedback, setAllFeedback] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(true)
+  const [isHighlightsLoading, setIsHighlightsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [feedbackWindow, setFeedbackWindowState] = useState<FeedbackWindow>('30d')
 
   useEffect(() => {
-    fetchDashboardData()
+    fetchDashboardData(feedbackWindow, { showFullLoader: true })
   }, [])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (
+    windowParam: FeedbackWindow,
+    { showFullLoader = false }: { showFullLoader?: boolean } = {}
+  ) => {
     try {
-      const response = await fetch('/api/restaurant/dashboard?includeAllFeedbacks=true', { credentials: 'include' })
+      if (showFullLoader) {
+        setIsLoading(true)
+      } else {
+        setIsHighlightsLoading(true)
+      }
+
+      const response = await fetch(
+        `/api/restaurant/dashboard?includeAllFeedbacks=true&window=${windowParam}`,
+        { credentials: 'include' }
+      )
       if (response.ok) {
         const data = await response.json()
         setRestaurant(data.restaurant)
         setAnalytics(data.analytics)
+        setError('')
         const topHighlights = (data.topHighlights || []).map((item: any) => ({
           id: item.id,
           summary: item.summary,
@@ -123,8 +138,16 @@ export default function DashboardLayout({
       console.error('Error fetching data for layout:', error)
       setError('An error occurred while loading data')
     } finally {
-      setIsLoading(false)
+      if (showFullLoader) {
+        setIsLoading(false)
+      }
+      setIsHighlightsLoading(false)
     }
+  }
+
+  const handleWindowChange = (windowParam: FeedbackWindow) => {
+    setFeedbackWindowState(windowParam)
+    fetchDashboardData(windowParam)
   }
 
   if (isLoading) {
@@ -161,6 +184,9 @@ export default function DashboardLayout({
     recentFeedbacks,
     forms,
     allFeedback,
+    feedbackWindow,
+    setFeedbackWindow: handleWindowChange,
+    isHighlightsLoading,
   };
 
   return (

@@ -1,11 +1,18 @@
 'use client'
 
-import { MessageSquare, Star, TrendingUp, RefreshCcw } from "lucide-react"
+import { MessageSquare, Star, TrendingUp, RefreshCcw, Loader2 } from "lucide-react"
 import { KPICard } from "@/components/dashboard/KPICard"
 import { SentimentChart } from "@/components/dashboard/SentimentChart"
 import { FeedbackHighlights } from "@/components/dashboard/FeedbackHighlights"
 import { RecentFeedbackTable } from "@/components/dashboard/RecentFeedbackTable"
-import { useDashboard } from "@/context/DashboardContext"
+import { useDashboard, FeedbackWindow } from "@/context/DashboardContext"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 /**
  * Main restaurant dashboard page with Loveable design
@@ -13,7 +20,11 @@ import { useDashboard } from "@/context/DashboardContext"
  * @returns JSX element containing the restaurant dashboard
  */
 export default function RestaurantDashboard() {
-  const { restaurant, analytics, topHighlights, recentFeedbacks, forms } = useDashboard();
+  const { restaurant, analytics, topHighlights, recentFeedbacks, forms, feedbackWindow, setFeedbackWindow, isHighlightsLoading } = useDashboard();
+
+  const handleWindowChange = (value: string) => {
+    setFeedbackWindow(value as FeedbackWindow)
+  }
 
   if (!restaurant || !analytics) {
     return null; // Or a loading/error state
@@ -148,8 +159,30 @@ export default function RestaurantDashboard() {
 
         {/* Feedback Highlights */}
         <div className="p-6 rounded-2xl border border-glass bg-gradient-card backdrop-blur-sm">
-          <h2 className="text-xl font-semibold mb-6">Feedback Highlights</h2>
-          <FeedbackHighlights highlights={topHighlights} />
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+            <h2 className="text-xl font-semibold">Feedback Highlights</h2>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Showing</span>
+              <Select value={feedbackWindow} onValueChange={handleWindowChange} disabled={isHighlightsLoading}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="90d">Last 90 days</SelectItem>
+                </SelectContent>
+              </Select>
+              {isHighlightsLoading && (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
+          </div>
+          {topHighlights.length > 0 ? (
+            <FeedbackHighlights highlights={topHighlights} />
+          ) : (
+            <p className="text-sm text-muted-foreground">No feedback highlights available for this period.</p>
+          )}
         </div>
 
         {/* Recent Feedback Table */}
