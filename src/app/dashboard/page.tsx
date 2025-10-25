@@ -98,7 +98,7 @@ export default function RestaurantDashboard() {
               change={analytics.kpiCardData.totalFeedback.change}
               changeLabel={analytics.kpiCardData.totalFeedback.changeLabel}
               icon={<MessageSquare className="w-6 h-6" />}
-              variant="default"
+              variant="positive"
             />
             <KPICard
               title="Average Rating"
@@ -106,7 +106,7 @@ export default function RestaurantDashboard() {
               change={analytics.kpiCardData.averageRating.change}
               changeLabel={analytics.kpiCardData.averageRating.changeLabel}
               icon={<Star className="w-6 h-6" />}
-              variant="positive"
+              variant="neutral"
             />
             <KPICard
               title="Positive Feedback"
