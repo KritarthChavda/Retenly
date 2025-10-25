@@ -1,8 +1,15 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import type { ChartOptions, TooltipModel, ChartType } from 'chart.js'
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  type ChartOptions,
+  type TooltipModel,
+  type Plugin,
+} from 'chart.js'
 import { Doughnut } from 'react-chartjs-2'
 
 type DoughnutArcElement = InstanceType<typeof ArcElement>
@@ -10,6 +17,49 @@ type DoughnutChartInstance = ChartJS<'doughnut'>
 type DoughnutTooltipModel = TooltipModel<'doughnut'>
 
 ChartJS.register(ArcElement, Tooltip, Legend)
+
+// --- Center text plugin (typed, no TS augmentation needed) ---
+function centerTextPlugin(opts: {
+  value: number | string
+  label?: string
+  valueColor?: string
+  labelColor?: string
+  valueFontSize?: number
+  labelFontSize?: number
+  offsetY?: number
+  labelOffset?: number
+  fontFamily?: string
+}): Plugin<'doughnut'> {
+  return {
+    id: 'centerText',
+    afterDraw(chart) {
+      const meta = chart.getDatasetMeta(0)
+      if (!meta?.data?.length) return
+
+      // All arcs share the same center
+      // @ts-ignore ArcElement provides x/y
+      const { x, y } = meta.data[0]
+      const ctx = chart.ctx
+      ctx.save()
+
+      // main value
+      ctx.fillStyle = opts.valueColor ?? '#e5e7eb'
+      ctx.font = `600 ${opts.valueFontSize ?? 24}px ${opts.fontFamily ?? 'Inter, system-ui, sans-serif'}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(String(opts.value ?? ''), x, y - (opts.offsetY ?? 6))
+
+      // label
+      if (opts.label) {
+        ctx.fillStyle = opts.labelColor ?? '#9ca3af'
+        ctx.font = `500 ${opts.labelFontSize ?? 12}px ${opts.fontFamily ?? 'Inter, system-ui, sans-serif'}`
+        ctx.fillText(opts.label, x, y + (opts.labelOffset ?? 14))
+      }
+
+      ctx.restore()
+    },
+  }
+}
 
 interface SentimentData {
   name: string
@@ -24,9 +74,11 @@ interface SentimentChartProps {
 
 export const SentimentChart = ({ data }: SentimentChartProps) => {
   const total = data.reduce((sum, item) => sum + item.value, 0)
+
   const chartWrapperRef = useRef<HTMLDivElement | null>(null)
   const tooltipElRef = useRef<HTMLDivElement | null>(null)
 
+  // Create/attach the custom tooltip element once per chart
   const ensureTooltipElement = (chart: DoughnutChartInstance) => {
     let tooltipEl = tooltipElRef.current
 
@@ -61,7 +113,11 @@ export const SentimentChart = ({ data }: SentimentChartProps) => {
     return tooltipEl
   }
 
-  const externalTooltipHandler = (context: { chart: DoughnutChartInstance; tooltip: DoughnutTooltipModel }) => {
+  // External tooltip
+  const externalTooltipHandler = (context: {
+    chart: DoughnutChartInstance
+    tooltip: DoughnutTooltipModel
+  }) => {
     const { chart, tooltip } = context
     const tooltipEl = ensureTooltipElement(chart)
 
@@ -138,6 +194,7 @@ export const SentimentChart = ({ data }: SentimentChartProps) => {
     tooltipEl.style.opacity = '1'
   }
 
+  // Cleanup tooltip on unmount
   useEffect(() => {
     return () => {
       tooltipElRef.current?.remove()
@@ -146,12 +203,12 @@ export const SentimentChart = ({ data }: SentimentChartProps) => {
   }, [])
 
   const chartData = {
-    labels: data.map(item => item.name),
+    labels: data.map((i) => i.name),
     datasets: [
       {
-        data: data.map(item => item.value),
-        backgroundColor: data.map(item => item.color),
-        borderColor: data.map(item => item.color),
+        data: data.map((i) => i.value),
+        backgroundColor: data.map((i) => i.color),
+        borderColor: data.map((i) => i.color),
         borderWidth: 2,
         hoverBorderWidth: 3,
         cutout: '60%',
@@ -162,9 +219,7 @@ export const SentimentChart = ({ data }: SentimentChartProps) => {
   const options: ChartOptions<'doughnut'> = {
     responsive: true,
     maintainAspectRatio: false,
-    layout: {
-      padding: 28,
-    },
+    layout: { padding: 28 },
     plugins: {
       legend: {
         position: 'bottom',
@@ -172,53 +227,39 @@ export const SentimentChart = ({ data }: SentimentChartProps) => {
           color: '#e5e7eb',
           padding: 20,
           usePointStyle: true,
-          pointStyle: 'circle'
-        }
+          pointStyle: 'circle',
+        },
       },
       tooltip: {
         enabled: false,
         external: externalTooltipHandler,
         displayColors: false,
         callbacks: {
-          label: (context) => {
-            const value = context.parsed as number
-            const percentage = total > 0 ? Math.round((value / total) * 100) : 0
-            return `${value} (${percentage}%)`
-          }
-        }
-      }
+          label: (ctx) => {
+            const value = ctx.parsed as number
+            const pct = total > 0 ? Math.round((value / total) * 100) : 0
+            return `${value} (${pct}%)`
+          },
+        },
+      },
     },
-    animation: {
-      animateRotate: true,
-      animateScale: true,
-      easing: 'easeOutQuart'
-    }
+    animation: { animateRotate: true, animateScale: true, easing: 'easeOutQuart' },
   }
 
   return (
     <div className="w-full h-80 relative">
       {total > 0 ? (
-        <>
-          <div ref={chartWrapperRef} className="relative h-full">
-            <Doughnut data={chartData} options={options} />
-          </div>
-
-          {/* Center text */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-foreground">
-                {total}
-              </div>
-              <div className="text-sm text-muted-foreground">Total</div>
-            </div>
-          </div>
-        </>
+        <div ref={chartWrapperRef} className="relative h-full">
+          <Doughnut
+            data={chartData}
+            options={options}
+            plugins={[centerTextPlugin({ value: total, label: 'Total' })]}
+          />
+        </div>
       ) : (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-muted-foreground">
-              No feedback yet
-            </div>
+        <div className="flex items-center justify-center h-full text-center">
+          <div>
+            <div className="text-2xl font-bold text-muted-foreground">No feedback yet</div>
             <div className="text-sm text-muted-foreground">
               Start collecting customer feedback to see insights here
             </div>
