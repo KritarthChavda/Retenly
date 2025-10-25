@@ -9,6 +9,7 @@ import { Mic, MicOff } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import restaurantCover from "@/assets/restaurant-cover.jpg"
 import restaurantLogo from "@/assets/restaurant-logo.png"
+import Link from "next/link"
 
 interface FeedbackFormProps {
   onSubmit: (data: FeedbackData) => void
@@ -17,6 +18,7 @@ interface FeedbackFormProps {
   tagline?: string
   coverImage?: string
   logoImage?: string
+  isDefault?: boolean
 }
 
 export interface FeedbackData {
@@ -52,6 +54,7 @@ export default function FeedbackForm({
   tagline = "Spill the beans — we're all ears! 🍽️",
   coverImage = restaurantCover.src,
   logoImage = restaurantLogo.src,
+  isDefault = false
 }: FeedbackFormProps) {
   const [formData, setFormData] = useState<FeedbackData>({
     name: '',
@@ -287,6 +290,16 @@ export default function FeedbackForm({
         <div className="text-center py-8 text-sm text-slate-400">
           Powered by{" "}
           <span className="font-semibold bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent">Retenly</span>
+          {isDefault && ( 
+          <div className="mt-2">
+            <Link
+              href="/demo/analytics-dashboard"
+              className="text-slate-200 underline underline-offset-4 hover:text-yellow-300 transition-colors"
+            >
+              Peek at our analytics dashboard
+            </Link>
+          </div>
+          )}
         </div>
       </div>
     </div>

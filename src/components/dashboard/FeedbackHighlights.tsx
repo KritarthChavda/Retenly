@@ -1,17 +1,16 @@
-import { Star, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Star, ThumbsUp, ThumbsDown } from "lucide-react"
 
 interface FeedbackItem {
-  id: string;
-  customerName: string;
-  rating: number;
-  feedback: string;
-  date: string;
-  sentiment: "positive" | "negative";
+  id: string
+  summary: string
+  generatedAt: string
+  themes: string[]
+  confidence: number
+  type: "positive" | "negative"
 }
 
 interface FeedbackHighlightsProps {
-  positiveFeedback: FeedbackItem[];
-  negativeFeedback: FeedbackItem[];
+  highlights: FeedbackItem[]
 }
 
 const FeedbackCard = ({ item, type }: { item: FeedbackItem; type: "positive" | "negative" }) => {
@@ -36,14 +35,14 @@ const FeedbackCard = ({ item, type }: { item: FeedbackItem; type: "positive" | "
         
         <div className="flex-1 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="font-medium text-sm">{item.customerName}</p>
+            <p className="font-medium text-sm">{isPositive ? "Positive highlight" : "Needs improvement"}</p>
             <div className="flex items-center gap-1">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
                   className={`w-3 h-3 ${
-                    i < item.rating 
-                      ? "text-yellow-400 fill-yellow-400" 
+                    i < Math.round(item.confidence * 5)
+                      ? "text-yellow-400 fill-yellow-400"
                       : "text-muted-foreground/30"
                   }`}
                 />
@@ -52,11 +51,20 @@ const FeedbackCard = ({ item, type }: { item: FeedbackItem; type: "positive" | "
           </div>
           
           <p className="text-sm text-muted-foreground leading-relaxed">
-            "{item.feedback}"
+            "{item.summary}"
           </p>
+          {item.themes?.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {item.themes.map((theme) => (
+                <span key={theme} className="inline-flex items-center rounded-full bg-muted/30 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  #{theme}
+                </span>
+              ))}
+            </div>
+          )}
           
           <p className="text-xs text-muted-foreground/70">
-            {new Date(item.date).toLocaleDateString()}
+            {new Date(item.generatedAt).toLocaleDateString()}
           </p>
         </div>
       </div>
@@ -64,7 +72,10 @@ const FeedbackCard = ({ item, type }: { item: FeedbackItem; type: "positive" | "
   );
 };
 
-export const FeedbackHighlights = ({ positiveFeedback, negativeFeedback }: FeedbackHighlightsProps) => {
+export const FeedbackHighlights = ({ highlights }: FeedbackHighlightsProps) => {
+  const positiveFeedback = highlights.filter((item) => item.type === "positive")
+  const negativeFeedback = highlights.filter((item) => item.type === "negative")
+
   return (
     <div className="grid md:grid-cols-2 gap-6">
       {/* Positive Feedback */}

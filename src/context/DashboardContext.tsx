@@ -20,22 +20,22 @@ interface Analytics {
   npsScore: number;
   mostLovedFeature: string;
   averageRating: number;
+  repeatFeedbackRate: number;
   kpiCardData: {
     totalFeedback: { change: number; changeLabel: string };
     averageRating: { change: number; changeLabel: string };
     positiveFeedback: { change: number; changeLabel: string };
-    customerSatisfaction: { change: number; changeLabel: string };
+    repeatFeedbackRate: { change: number; changeLabel: string };
   };
 }
 
-interface Feedback {
-  id: string;
-  text: string;
-  experience: string;
-  createdAt: string;
-  name: string;
-  rating?: number;
-  sentiment?: "positive" | "negative" | "neutral";
+interface FeedbackHighlight {
+  id: string
+  summary: string
+  generatedAt: string
+  themes: string[]
+  confidence: number
+  type: "positive" | "negative"
 }
 
 interface Form {
@@ -56,15 +56,19 @@ interface FeedbackItem {
   tags?: string[];
 }
 
+export type FeedbackWindow = "7d" | "30d" | "90d"
+
 interface DashboardContextProps {
-  restaurant: Restaurant | null;
-  setRestaurant: (restaurant: Restaurant) => void;
-  analytics: Analytics | null;
-  topPositiveFeedbacks: Feedback[];
-  topNegativeFeedbacks: Feedback[];
-  recentFeedbacks: Feedback[];
-  forms: Form[];
-  allFeedback: FeedbackItem[];
+  restaurant: Restaurant | null
+  setRestaurant: (restaurant: Restaurant) => void
+  analytics: Analytics | null
+  topHighlights: FeedbackHighlight[]
+  recentFeedbacks: FeedbackItem[]
+  forms: Form[]
+  allFeedback: FeedbackItem[]
+  feedbackWindow: FeedbackWindow
+  setFeedbackWindow: (window: FeedbackWindow) => void
+  isHighlightsLoading: boolean
 }
 
 const DashboardContext = createContext<DashboardContextProps | undefined>(undefined);

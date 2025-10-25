@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { DashboardProvider } from '@/context/DashboardContext'
+import { DashboardProvider, FeedbackWindow } from '@/context/DashboardContext'
 
 interface Restaurant {
   id: string
@@ -22,22 +22,22 @@ interface Analytics {
   npsScore: number
   mostLovedFeature: string
   averageRating: number
+  repeatFeedbackRate: number
   kpiCardData: {
     totalFeedback: { change: number; changeLabel: string }
     averageRating: { change: number; changeLabel: string }
     positiveFeedback: { change: number; changeLabel: string }
-    customerSatisfaction: { change: number; changeLabel: string }
+    repeatFeedbackRate: { change: number; changeLabel: string }
   }
 }
 
-interface Feedback {
+interface FeedbackHighlight {
   id: string
-  text: string
-  experience: string
-  createdAt: string
-  name: string
-  rating?: number
-  sentiment?: "positive" | "negative" | "neutral"
+  summary: string
+  generatedAt: string
+  themes: string[]
+  confidence: number
+  type: "positive" | "negative"
 }
 
 interface Form {
@@ -65,28 +65,59 @@ export default function DashboardLayout({
 }) {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
-  const [topPositiveFeedbacks, setTopPositiveFeedbacks] = useState<Feedback[]>([])
-  const [topNegativeFeedbacks, setTopNegativeFeedbacks] = useState<Feedback[]>([])
-  const [recentFeedbacks, setRecentFeedbacks] = useState<Feedback[]>([])
+  const [topHighlights, setTopHighlights] = useState<FeedbackHighlight[]>([])
+  const [recentFeedbacks, setRecentFeedbacks] = useState<FeedbackItem[]>([])
   const [forms, setForms] = useState<Form[]>([])
   const [allFeedback, setAllFeedback] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(true)
+  const [isHighlightsLoading, setIsHighlightsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [feedbackWindow, setFeedbackWindowState] = useState<FeedbackWindow>('30d')
 
   useEffect(() => {
-    fetchDashboardData()
+    fetchDashboardData(feedbackWindow, { showFullLoader: true })
   }, [])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (
+    windowParam: FeedbackWindow,
+    { showFullLoader = false }: { showFullLoader?: boolean } = {}
+  ) => {
     try {
-      const response = await fetch('/api/restaurant/dashboard?includeAllFeedbacks=true', { credentials: 'include' })
+      if (showFullLoader) {
+        setIsLoading(true)
+      } else {
+        setIsHighlightsLoading(true)
+      }
+
+      const response = await fetch(
+        `/api/restaurant/dashboard?includeAllFeedbacks=true&window=${windowParam}`,
+        { credentials: 'include' }
+      )
       if (response.ok) {
         const data = await response.json()
         setRestaurant(data.restaurant)
         setAnalytics(data.analytics)
-        setTopPositiveFeedbacks(data.topPositiveFeedbacks || [])
-        setTopNegativeFeedbacks(data.topNegativeFeedbacks || [])
-        setRecentFeedbacks(data.recentFeedbacks || [])
+        setError('')
+        const topHighlights = (data.topHighlights || []).map((item: any) => ({
+          id: item.id,
+          summary: item.summary,
+          generatedAt: item.generatedAt,
+          themes: item.themes || [],
+          confidence: item.confidence ?? 0.6,
+          type: item.type === 'negative' ? 'negative' : 'positive'
+        }))
+        setTopHighlights(topHighlights)
+        const recent = (data.recentFeedbacks || []).map((f: any) => ({
+          id: f.id,
+          date: f.createdAt,
+          customerName: f.name || 'Anonymous',
+          phone: f.phoneNumber || 'N/A',
+          feedback: f.feedback || 'No text feedback',
+          rating: f.rating || 3,
+          sentiment: (f.sentiment || 'neutral').toLowerCase(),
+          tags: []
+        }))
+        setRecentFeedbacks(recent)
         setForms(data.forms || [])
         const transformedFeedback = (data.allFeedbacks || []).map((f: any) => ({
           id: f.id,
@@ -107,8 +138,16 @@ export default function DashboardLayout({
       console.error('Error fetching data for layout:', error)
       setError('An error occurred while loading data')
     } finally {
-      setIsLoading(false)
+      if (showFullLoader) {
+        setIsLoading(false)
+      }
+      setIsHighlightsLoading(false)
     }
+  }
+
+  const handleWindowChange = (windowParam: FeedbackWindow) => {
+    setFeedbackWindowState(windowParam)
+    fetchDashboardData(windowParam)
   }
 
   if (isLoading) {
@@ -141,11 +180,13 @@ export default function DashboardLayout({
     restaurant,
     setRestaurant,
     analytics,
-    topPositiveFeedbacks,
-    topNegativeFeedbacks,
+    topHighlights,
     recentFeedbacks,
     forms,
     allFeedback,
+    feedbackWindow,
+    setFeedbackWindow: handleWindowChange,
+    isHighlightsLoading,
   };
 
   return (

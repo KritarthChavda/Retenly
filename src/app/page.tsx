@@ -1,67 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import FeedbackForm, { FeedbackData } from '@/components/FeedbackForm'
-import ThankYouPage from '@/components/ThankYouPage'
+import { DefaultFeedbackExperience } from '@/components/demo/DefaultFeedbackExperience'
 
-/**
- * Main restaurant feedback page component
- * 
- * @returns JSX element containing the feedback form or thank you message
- */
 export default function Home() {
-  const [isSubmitted, setIsSubmitted] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [customerName, setCustomerName] = useState('')
-
-  const handleSubmit = async (data: FeedbackData) => {
-    setIsSubmitting(true)
-    setCustomerName(data.name)
-    
-    try {
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (response.ok) {
-        setIsSubmitted(true)
-      } else {
-        const errorData = await response.json()
-        alert(`Error: ${errorData.error || 'Something went wrong'}`)
-      }
-    } catch (error) {
-      console.error('Error submitting feedback:', error)
-      alert('Something went wrong. Please try again.')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleBack = () => {
-    setIsSubmitted(false)
-    setCustomerName('')
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      {isSubmitted ? (
-        <ThankYouPage 
-          onBack={handleBack}
-          restaurantName="Downtown Rajkot"
-          customerName={customerName}
-        />
-      ) : (
-        <FeedbackForm 
-          onSubmit={handleSubmit} 
-          isSubmitting={isSubmitting}
-          restaurantName="Downtown Rajkot"
-          tagline="Spill the beans — we're all ears! 🍽️"
-        />
-      )}
-    </div>
-  )
+  return <DefaultFeedbackExperience />
 }
