@@ -2,34 +2,24 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Twitter, Facebook, Instagram, ArrowLeft } from "lucide-react";
 import thankYouImage from "@/assets/thank-you-celebration.png";
-
-interface ThankYouPageProps {
-  onBack: () => void;
-  restaurantName?: string;
-  customerName?: string;
-  socialLinks?: {
-    twitter?: string;
-    facebook?: string;
-    instagram?: string;
-  };
-}
+import Confetti from "./Confetti";
 
 export default function ThankYouPage({
   onBack,
   restaurantName = "Downtown Rajkot",
   customerName = "friend",
   socialLinks = {},
-}: ThankYouPageProps) {
-  const [showConfetti, setShowConfetti] = useState(false);
+}) {
+  const [showConfetti, setShowConfetti] = useState(true);
+  const [shareUrl, setShareUrl] = useState(""); // avoid SSR window access
 
   useEffect(() => {
-    setShowConfetti(true);
-    const timer = setTimeout(() => setShowConfetti(false), 3000);
-    return () => clearTimeout(timer);
+    if (typeof window !== "undefined") {
+      setShareUrl(window.location.href);
+    }
   }, []);
 
   const shareText = `I just shared my amazing experience at ${restaurantName}! 🍽️✨`;
-  const shareUrl = window.location.href;
 
   const handleShare = (platform: string) => {
     let url = "";
@@ -58,19 +48,10 @@ export default function ThankYouPage({
     <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4 relative overflow-hidden">
       {/* Confetti Animation */}
       {showConfetti && (
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(50)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-full animate-bounce"
-              style={{
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 3}s`,
-                animationDuration: `${3 + Math.random() * 2}s`,
-              }}
-            />
-          ))}
-        </div>
+        <Confetti
+          duration={3000}              // keep the canvas around for 3s
+          onDone={() => setShowConfetti(false)} // then remove it
+        />
       )}
 
       <div className="max-w-2xl mx-auto text-center space-y-8">
@@ -79,28 +60,28 @@ export default function ThankYouPage({
           <img
             src={thankYouImage.src}
             alt="Thank you celebration"
-            className="w-64 h-48 object-contain animate-pulse"
+            className="w-64 h-48 object-contain"
           />
         </div>
 
         {/* Main Message */}
         <div className="space-y-4">
-          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent animate-pulse">
+          <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent selection:bg-pink-500/30 selection:text-white">
             Thank You, {customerName}! 🎉
           </h1>
-          <p className="text-xl text-slate-300 animate-pulse" style={{ animationDelay: "0.2s" }}>
+          <p className="text-xl text-slate-300">
             Your feedback means the world to us at{" "}
             <span className="font-semibold text-white">{restaurantName}</span>
           </p>
         </div>
 
         {/* Success Card */}
-        <div className="bg-slate-800 border border-slate-600 rounded-xl shadow-lg backdrop-blur-sm p-8 animate-pulse" style={{ animationDelay: "0.4s" }}>
+        <div className="bg-slate-800 border border-slate-600 rounded-xl shadow-lg backdrop-blur-sm p-8">
           <div className="space-y-6">
             <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-full flex items-center justify-center mx-auto shadow-lg">
               <span className="text-2xl">✨</span>
             </div>
-            
+
             <div className="space-y-2">
               <h2 className="text-2xl font-semibold text-white">Feedback Received!</h2>
               <p className="text-slate-300">
@@ -138,43 +119,46 @@ export default function ThankYouPage({
               size="sm"
               onClick={() => handleShare("native")}
               className="flex items-center space-x-2 hover:bg-slate-700"
+              // disabled={!shareUrl}
             >
               <Share2 className="w-4 h-4" />
               <span>Share</span>
             </Button>
-            
+
             <Button
               variant="outline"
               size="sm"
               onClick={() => handleShare("twitter")}
               className="flex items-center space-x-2 hover:bg-blue-500/10 hover:text-blue-400 hover:border-blue-400"
+              // disabled={!shareUrl}
             >
               <Twitter className="w-4 h-4" />
               <span>Twitter</span>
             </Button>
-            
+
             <Button
               variant="outline"
               size="sm"
               onClick={() => handleShare("facebook")}
               className="flex items-center space-x-2 hover:bg-blue-600/10 hover:text-blue-500 hover:border-blue-500"
+              // disabled={!shareUrl}
             >
               <Facebook className="w-4 h-4" />
               <span>Facebook</span>
             </Button>
 
             {socialLinks.instagram && (
-              <Button
-                variant="outline"
-                size="sm"
+            <Button
+              variant="outline"
+              size="sm"
                 asChild
                 className="flex items-center space-x-2 hover:bg-pink-500/10 hover:text-pink-400 hover:border-pink-400"
-              >
+            >
                 <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer">
-                  <Instagram className="w-4 h-4" />
+              <Instagram className="w-4 h-4" />
                   <span>Follow Us</span>
                 </a>
-              </Button>
+            </Button>
             )}
           </div>
         </div>

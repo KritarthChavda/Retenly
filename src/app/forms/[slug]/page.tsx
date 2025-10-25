@@ -49,6 +49,12 @@ export default function CustomerForm() {
     }
   }, [restaurantSlug])
 
+  useEffect(() => {
+    if (isSubmitted && typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" }); // "auto" is standard; "instant" isn't
+    }
+  }, [isSubmitted]);
+
   const fetchForm = async () => {
     try {
       console.log('Fetching form for slug:', restaurantSlug)
