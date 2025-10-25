@@ -10,7 +10,7 @@ function minusDays(d: Date, days: number) {
 
 async function main() {
   const rows = await prisma.topFeedback.findMany({
-    where: { window: null },
+    where: { window: undefined },
     select: { id: true, generatedAt: true, createdAt: true }
   })
 
@@ -22,7 +22,7 @@ async function main() {
     await prisma.topFeedback.update({
       where: { id: r.id },
       data: {
-        window: '_30d',
+        window: 'D30',
         windowStart: start,
         windowEnd: end
       }
