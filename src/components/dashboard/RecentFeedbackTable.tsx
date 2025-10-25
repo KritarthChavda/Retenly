@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Search, Star, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { date } from 'zod/v4'
 
 interface FeedbackItem {
   id: string;
@@ -38,10 +39,18 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+  const dateFormatter = useMemo(() =>
+    new Intl.DateTimeFormat('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: 'UTC',
+    }),
+    []);
 
   const getSentimentBadge = (sentiment: string) => {
     const baseClasses = "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium";
-    
+
     switch (sentiment) {
       case "positive":
         return (
@@ -69,11 +78,10 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
       {[...Array(5)].map((_, i) => (
         <Star
           key={i}
-          className={`w-4 h-4 ${
-            i < rating 
-              ? "text-yellow-400 fill-yellow-400" 
-              : "text-muted-foreground/30"
-          }`}
+          className={`w-4 h-4 ${i < rating
+            ? "text-yellow-400 fill-yellow-400"
+            : "text-muted-foreground/30"
+            }`}
         />
       ))}
     </div>
@@ -84,7 +92,7 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <h2 className="text-2xl font-bold">Recent Feedback</h2>
-        
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -115,12 +123,12 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
             </thead>
             <tbody>
               {paginatedData.map((item) => (
-                <tr 
-                  key={item.id} 
+                <tr
+                  key={item.id}
                   className="border-b border-glass/50 hover:bg-gradient-card/50 transition-colors"
                 >
                   <td className="p-4 text-muted-foreground">
-                    {new Date(item.date).toLocaleDateString()}
+                    {dateFormatter.format(new Date(item.date))}
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
@@ -142,8 +150,8 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
                     </p>
                   </td>
                   <td className="p-4 text-right">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       className="hover:bg-gradient-card border border-transparent hover:border-glass"
                     >
@@ -163,7 +171,7 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
           <p className="text-sm text-muted-foreground">
             Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredData.length)} of {filteredData.length} results
           </p>
-          
+
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -175,11 +183,11 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
               <ChevronLeft className="w-4 h-4" />
               Previous
             </Button>
-            
+
             <span className="text-sm px-3 py-1 bg-gradient-card border border-glass rounded-lg">
               {currentPage} of {totalPages}
             </span>
-            
+
             <Button
               variant="outline"
               size="sm"

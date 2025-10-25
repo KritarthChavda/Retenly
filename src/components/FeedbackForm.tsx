@@ -18,6 +18,7 @@ interface FeedbackFormProps {
   tagline?: string
   coverImage?: string
   logoImage?: string
+  isDefault?: boolean
 }
 
 export interface FeedbackData {
@@ -53,6 +54,7 @@ export default function FeedbackForm({
   tagline = "Spill the beans — we're all ears! 🍽️",
   coverImage = restaurantCover.src,
   logoImage = restaurantLogo.src,
+  isDefault = false
 }: FeedbackFormProps) {
   const [formData, setFormData] = useState<FeedbackData>({
     name: '',
@@ -288,6 +290,7 @@ export default function FeedbackForm({
         <div className="text-center py-8 text-sm text-slate-400">
           Powered by{" "}
           <span className="font-semibold bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent">Retenly</span>
+          {isDefault && ( 
           <div className="mt-2">
             <Link
               href="/demo/analytics-dashboard"
@@ -296,6 +299,7 @@ export default function FeedbackForm({
               Peek at our analytics dashboard
             </Link>
           </div>
+          )}
         </div>
       </div>
     </div>

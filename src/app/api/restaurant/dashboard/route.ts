@@ -120,9 +120,9 @@ export async function GET(request: NextRequest) {
 // keep your existing buildKpis or define it if missing
 function buildKpis() {
   return {
-    totalFeedback: { change: 0, changeLabel: 'vs prev' },
-    averageRating: { change: 0, changeLabel: 'vs prev' },
-    positiveFeedback: { change: 0, changeLabel: 'vs prev' },
-    repeatFeedbackRate: { change: 0, changeLabel: 'vs prev' }
+    totalFeedback: { change: 0, changeLabel: 'vs last month' },
+    averageRating: { change: 0, changeLabel: 'vs last month' },
+    positiveFeedback: { change: 0, changeLabel: 'vs last month' },
+    repeatFeedbackRate: { change: 0, changeLabel: 'vs last month' }
   }
 }

@@ -112,7 +112,7 @@ export default function DashboardLayout({
           date: f.createdAt,
           customerName: f.name || 'Anonymous',
           phone: f.phoneNumber || 'N/A',
-          feedback: f.text || 'No text feedback',
+          feedback: f.feedback || 'No text feedback',
           rating: f.rating || 3,
           sentiment: (f.sentiment || 'neutral').toLowerCase(),
           tags: []

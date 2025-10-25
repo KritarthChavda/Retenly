@@ -61,6 +61,7 @@ export function DefaultFeedbackExperience({
           isSubmitting={isSubmitting}
           restaurantName={restaurantName}
           tagline="Spill the beans — we're all ears! 🍽️"
+          isDefault = {true}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 import "dotenv/config"
-import { prisma } from "../src/lib/prisma.ts"
-import { regenerateTopFeedbackForRestaurant } from "../src/lib/ai/topFeedback.ts"
+import { prisma } from "../src/lib/prisma"
+import { regenerateTopFeedbackForRestaurant } from "../src/lib/ai/topFeedback"
 
 async function main() {
   const restaurants = await prisma.restaurant.findMany({
