@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bell, ChevronDown, Menu, Settings, LogOut, BarChart3 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,43 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Handle clicks outside of dropdowns
+  // Close menus when pathname changes (navigation occurs)
+  useEffect(() => {
+    setIsOpen(false);
+    setMenuOpen(false);
+  }, [pathname]);
+
+  // Handle clicks outside of dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Profile menu click outside
+      if (menuOpen && menuRef.current && profileButtonRef.current) {
+        if (!menuRef.current.contains(event.target as Node) && 
+            !profileButtonRef.current.contains(event.target as Node)) {
+          setMenuOpen(false);
+        }
+      }
+      
+      // Mobile menu click outside
+      if (isOpen && mobileMenuRef.current && mobileButtonRef.current) {
+        if (!mobileMenuRef.current.contains(event.target as Node) && 
+            !mobileButtonRef.current.contains(event.target as Node)) {
+          setIsOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpen, isOpen]);
 
   const toggleProfileMenu = () => {
     if (!menuOpen) {
@@ -109,6 +146,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
           {/* Restaurant Profile */}
           <div className="relative">
             <Button
+              ref={profileButtonRef}
               variant="ghost"
               className="flex items-center gap-3 px-2 sm:px-3 hover:bg-gradient-card border border-transparent hover:border-glass"
               onClick={toggleProfileMenu}
@@ -133,7 +171,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
             
             {/* Dropdown Menu */}
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-glass bg-background/95 text-foreground shadow-2xl backdrop-blur-md transition-all duration-200 z-[80]">
+              <div ref={menuRef} className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-glass bg-background/95 text-foreground shadow-2xl backdrop-blur-md transition-all duration-200 z-[80]">
                 <div className="p-2">
                   <Link href="/dashboard/settings" className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-gradient-card transition-colors">
                     <Settings className="h-4 w-4" />
@@ -154,6 +192,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
 
           {/* Mobile Menu */}
           <Button 
+            ref={mobileButtonRef}
             variant="ghost" 
             size="icon" 
             className="md:hidden hover:bg-gradient-card border border-transparent hover:border-glass"
@@ -166,7 +205,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
 
       {/* Mobile Navigation */}
       {isOpen && (
-        <div className="md:hidden border-t border-glass bg-background shadow-lg">
+        <div ref={mobileMenuRef} className="md:hidden border-t border-glass bg-background shadow-lg">
           <div className="flex flex-col gap-2 px-4 py-4 sm:px-6">
             <NavigationItems />
           </div>
