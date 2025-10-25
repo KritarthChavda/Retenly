@@ -1,34 +1,25 @@
-import { useCallback, useEffect, useRef } from 'react';
-import ReactCanvasConfetti from 'react-canvas-confetti';
-import type { CreateTypes } from 'canvas-confetti';
+import { useCallback, useEffect, useRef, useState } from "react";
+import ReactCanvasConfetti from "react-canvas-confetti";
+import type { CreateTypes } from "canvas-confetti";
 
-type ConfettiProps = {
-  duration?: number;
-  onDone?: () => void;
-};
-
-export default function Confetti({ duration = 3000, onDone }: ConfettiProps) {
+export default function Confetti() {
   const instanceRef = useRef<CreateTypes | null>(null);
   const hasFiredRef = useRef(false);
+  const [ready, setReady] = useState(false);
+  const [visible, setVisible] = useState(true);
 
-  // Accept either onInit(confetti) or onInit({ confetti })
-  const onInit = (arg: any) => {
-    const confettiFn = (arg && typeof arg === 'object' && 'confetti' in arg)
-      ? (arg as { confetti: CreateTypes }).confetti
-      : (arg as CreateTypes);
-
-    instanceRef.current = confettiFn || null;
-  };
-
-  const makeShot = useCallback((ratio: number, opts: Parameters<CreateTypes>[0]) => {
-    if (!instanceRef.current) return;
-    instanceRef.current({
-      ...opts,
-      origin: { y: 0.6 },
-      particleCount: Math.floor(200 * ratio),
-      colors: ['#ec4899', '#8b5cf6', '#f59e0b', '#10b981', '#3b82f6'],
-    });
-  }, []);
+  const makeShot = useCallback(
+    (ratio: number, opts: Parameters<CreateTypes>[0]) => {
+      if (!instanceRef.current) return;
+      instanceRef.current({
+        ...opts,
+        origin: { y: 0.6 },
+        particleCount: Math.floor(200 * ratio),
+        colors: ["#ec4899", "#8b5cf6", "#f59e0b", "#10b981", "#3b82f6"],
+      });
+    },
+    []
+  );
 
   const fire = useCallback(() => {
     makeShot(0.25, { spread: 26, startVelocity: 55 });
@@ -38,28 +29,51 @@ export default function Confetti({ duration = 3000, onDone }: ConfettiProps) {
     makeShot(0.1,  { spread: 120, startVelocity: 45 });
   }, [makeShot]);
 
+  const prefersReduced = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  // Accept either onInit(confetti) or onInit({ confetti })
+  const onInit = (arg: any) => {
+    const confettiFn =
+      arg && typeof arg === "object" && "confetti" in arg
+        ? (arg as { confetti: CreateTypes }).confetti
+        : (arg as CreateTypes);
+
+    instanceRef.current = confettiFn || null;
+    setReady(true); // trigger the fire effect once the instance exists
+  };
+
   useEffect(() => {
-    if (hasFiredRef.current) return;
+    if (!ready || hasFiredRef.current) return;
     hasFiredRef.current = true;
 
-    // Wait one microtask to ensure onInit ran and canvas sized
-    Promise.resolve().then(() => {
-      fire();
-      const t = setTimeout(() => onDone?.(), duration);
-      return () => clearTimeout(t);
-    });
-  }, [fire, duration, onDone]);
+    if (!prefersReduced()) {
+      // ensure canvas is sized before firing
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          fire();
+        });
+      });
+    }
+
+    // fade out but keep mounted (prevents flicker in the UI)
+    const t = setTimeout(() => setVisible(false), 1500);
+    return () => clearTimeout(t);
+  }, [ready, fire]);
 
   return (
     <ReactCanvasConfetti
       onInit={onInit}
       style={{
-        position: 'fixed',
-        pointerEvents: 'none',
-        width: '100%',
-        height: '100%',
+        position: "fixed",
+        pointerEvents: "none",
+        width: "100%",
+        height: "100%",
         inset: 0,
         zIndex: 9999,
+        opacity: visible ? 1 : 0,
+        transition: "opacity 300ms ease",
       }}
     />
   );
