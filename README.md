@@ -1,4 +1,4 @@
-# Restaurant Feedback Form
+# Retenly
 
 A comprehensive, multi-tenant restaurant feedback platform built with modern technologies and production-ready architecture.
 
