@@ -195,9 +195,6 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
               alt="Retenly"
               className="h-10 w-auto object-contain sm:h-10"
             />
-            <span className="sr-only sm:not-sr-only text-lg font-bold text-foreground">
-              Retenly
-            </span>
           </div>
 
           {/* Desktop Navigation */}
