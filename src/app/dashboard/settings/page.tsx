@@ -233,6 +233,6 @@ export default function Settings() {
       {isChangePasswordModalOpen && (
         <ChangePasswordModal onClose={() => setChangePasswordModalOpen(false)} />
       )}
-    </div>
+      </div>
   );
 }

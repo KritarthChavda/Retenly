@@ -114,7 +114,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
   );
 
   return (
-    <header className="w-full border-b border-glass bg-background md:sticky md:top-0 md:z-50 md:bg-background/80 md:backdrop-blur-md">
+    <header className="w-full border-b border-glass sticky top-0 z-50 bg-background/80 backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
         {/* Logo & Brand */}
         <div className="flex items-center gap-4 sm:gap-6">
