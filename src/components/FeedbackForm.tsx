@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Mic, MicOff } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { validatePhoneNumber, formatPhoneNumberToE164 } from '@/lib/validation'
 import restaurantCover from "@/assets/restaurant-cover.jpg"
 import restaurantLogo from "@/assets/restaurant-logo.png"
 import Link from "next/link"
@@ -114,7 +115,20 @@ export default function FeedbackForm({
       return
     }
 
-    onSubmit(formData)
+    // Validate using libphonenumber; default country IN if not provided
+    if (!validatePhoneNumber(formData.phoneNumber)) {
+      toast({
+        title: 'Invalid phone number',
+        description: 'Please enter a valid phone number including country code or leave country code to default (+91).',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Normalize to E.164 for backend storage
+    const formatted = formatPhoneNumberToE164(formData.phoneNumber) || formData.phoneNumber
+
+    onSubmit({ ...formData, phoneNumber: formatted })
   }
 
   return (

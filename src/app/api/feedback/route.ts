@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { feedbackSchema, sanitizeText } from '@/lib/validation'
+import { feedbackSchema, sanitizeText, formatPhoneNumberToE164, validatePhoneNumber } from '@/lib/validation'
 import { logger } from '@/lib/logger'
 import type { Form, Restaurant } from '@/generated/prisma'
 
@@ -62,11 +62,23 @@ export async function POST(request: NextRequest) {
     // Hash the phone number
     // const hashedPhoneNumber = await bcrypt.hash(phoneNumber, 10)
 
+    // Validate & normalize phone number on backend
+    let normalizedPhone: string | null = null
+    if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim().length > 0) {
+      if (!validatePhoneNumber(phoneNumber)) {
+        return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
+      }
+      normalizedPhone = formatPhoneNumberToE164(phoneNumber) // defaultCountry = 'IN' inside helper
+      if (!normalizedPhone) {
+        return NextResponse.json({ error: 'Unable to format phone number' }, { status: 400 })
+      }
+    }
+
     // Create feedback record
     const newFeedback = await prisma.feedback.create({
       data: {
         name: sanitizedName,
-        phoneNumber: phoneNumber,
+        phoneNumber: normalizedPhone ?? phoneNumber,
         experience,
         feedback: sanitizedFeedback,
         formId: targetForm.id,

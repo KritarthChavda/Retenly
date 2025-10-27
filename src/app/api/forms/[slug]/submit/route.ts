@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { extractPhoneNumber, extractCustomerName, extractRatingFromAnswers } from '@/lib/sentiment'
+import { validatePhoneNumber, formatPhoneNumberToE164 } from '@/lib/validation'
 
 /**
  * POST: Submit feedback for a restaurant by slug
@@ -51,7 +52,7 @@ export async function POST(
     }
 
     const form = restaurant.forms[0]
-    const phoneNumber = extractPhoneNumber(answers)
+  const phoneNumber = extractPhoneNumber(answers)
     const customerName = extractCustomerName(answers)
 
     console.log('Processing feedback:', {
@@ -104,12 +105,24 @@ export async function POST(
       else if (rating <= 2) sentiment = 'negative'
     }
 
+    // Validate & normalize phone number
+    let normalizedPhone: string | null = null
+    if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim().length > 0) {
+      if (!validatePhoneNumber(phoneNumber)) {
+        return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
+      }
+      normalizedPhone = formatPhoneNumberToE164(phoneNumber)
+      if (!normalizedPhone) {
+        return NextResponse.json({ error: 'Unable to format phone number' }, { status: 400 })
+      }
+    }
+
     // Create feedback record
     const feedback = await prisma.feedback.create({
       data: {
         formId: form.id,
         name: customerName,
-        phoneNumber: phoneNumber,
+        phoneNumber: normalizedPhone ?? phoneNumber,
         experience: experience,
         sentiment: sentiment,
         rating: rating,

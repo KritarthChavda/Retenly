@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { validatePhoneNumber, formatPhoneNumberToE164 } from '@/lib/validation'
 
 interface CustomerFeedbackFormProps {
   // Restaurant branding
@@ -91,6 +92,11 @@ export default function CustomerFeedbackForm({
     
     if (showPhone && !formData.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Phone number is required'
+    } else if (showPhone && formData.phoneNumber.trim()) {
+      // Validate and provide helpful error
+      if (!validatePhoneNumber(formData.phoneNumber)) {
+        newErrors.phoneNumber = 'Please enter a valid phone number (include country code or leave to default +91)'
+      }
     }
     
     if (showRating && formData.rating === 0) {
@@ -118,8 +124,10 @@ export default function CustomerFeedbackForm({
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
       
+      // Normalize phone number to E.164 before calling onSubmit
+      const formattedPhone = showPhone ? (formatPhoneNumberToE164(formData.phoneNumber) || formData.phoneNumber) : formData.phoneNumber
       if (onSubmit) {
-        onSubmit(formData)
+        onSubmit({ ...formData, phoneNumber: formattedPhone })
       }
       
       setIsSubmitted(true)
