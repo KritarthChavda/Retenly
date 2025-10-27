@@ -196,7 +196,7 @@ export default function ThankYouPage({
         </div>
 
         {/* Footer */}
-        <div className="text-center pt-4 text-sm text-slate-400">
+        <div className="text-center py-8 text-sm text-slate-400">
           Powered by{" "}
           <span className="font-semibold bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent">
             Retenly
