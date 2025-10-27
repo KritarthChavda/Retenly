@@ -73,6 +73,20 @@ export async function GET(request: NextRequest) {
     const csatScore = totalFeedbackCount ? Math.round((sentimentDistribution.positive / totalFeedbackCount) * 100) : 0
     const npsScore  = totalFeedbackCount ? Math.round(((sentimentDistribution.positive - sentimentDistribution.negative) / totalFeedbackCount) * 100) : 0
 
+    // Calculate repeat feedback rate based on phone numbers
+    const phoneNumbers = allFeedbacks
+      .map(f => f.phoneNumber)
+      .filter((phone): phone is string => phone !== null && phone !== 'N/A' && phone.length > 0);
+    
+    const phoneNumberCounts = phoneNumbers.reduce((acc, phone) => {
+      acc[phone] = (acc[phone] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const repeatCustomers = Object.values(phoneNumberCounts).filter((count): count is number => count > 1).length;
+    const uniqueCustomers = Object.keys(phoneNumberCounts).length;
+    const repeatFeedbackRate = uniqueCustomers ? Math.round((repeatCustomers / uniqueCustomers) * 100) : 0;
+
     // ⬇️ THIS is the fix: use enum + range (no strings like "_30d")
     const curatedHighlights = await prisma.topFeedback.findMany({
       where: {
@@ -100,7 +114,7 @@ export async function GET(request: NextRequest) {
         npsScore,
         mostLovedFeature: computeMostLoved(allFeedbacks),
         averageRating,
-        repeatFeedbackRate: 0, // placeholder
+        repeatFeedbackRate,
         kpiCardData: buildKpis()
       },
       topHighlights,
