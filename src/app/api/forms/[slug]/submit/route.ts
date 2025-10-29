@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { extractPhoneNumber, extractCustomerName, extractRatingFromAnswers } from '@/lib/sentiment'
+import { validatePhoneNumber, formatPhoneNumberToE164 } from '@/lib/validation'
 
 /**
  * POST: Submit feedback for a restaurant by slug
@@ -54,11 +55,23 @@ export async function POST(
     const phoneNumber = extractPhoneNumber(answers)
     const customerName = extractCustomerName(answers)
 
+    // Validate & normalize phone number first (required behavior)
+    let normalizedPhone: string | null = null
+    if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim().length > 0) {
+      if (!validatePhoneNumber(phoneNumber)) {
+        return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
+      }
+      normalizedPhone = formatPhoneNumberToE164(phoneNumber)
+      if (!normalizedPhone) {
+        return NextResponse.json({ error: 'Unable to format phone number' }, { status: 400 })
+      }
+    }
+
     console.log('Processing feedback:', {
       restaurantName: restaurant.name,
       formTitle: form.title,
       customerName,
-      phoneNumber,
+      phoneNumber: normalizedPhone ?? phoneNumber,
       experience: answers.experience
     })
 
@@ -109,7 +122,7 @@ export async function POST(
       data: {
         formId: form.id,
         name: customerName,
-        phoneNumber: phoneNumber,
+        phoneNumber: normalizedPhone ?? phoneNumber,
         experience: experience,
         sentiment: sentiment,
         rating: rating,
