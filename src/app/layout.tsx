@@ -17,6 +17,26 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Restaurant Feedback",
   description: "Share your dining experience and help us improve",
+  icons: {
+    icon: [
+      {
+        rel: "icon",
+        url: "/retenly-short-logo-transparent.svg",
+        type: "image/svg+xml",
+      },
+      {
+        url: "/retenly-short-logo-transparent.png",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/retenly-short-logo-transparent.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
