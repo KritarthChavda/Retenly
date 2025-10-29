@@ -75,7 +75,7 @@ export function validateRestaurantSlug(name: string): string {
 export function validatePhoneNumber(phone: string, defaultCountry = 'IN'): boolean {
   if (!phone || typeof phone !== 'string') return false
   try {
-    const parsed = parsePhoneNumberFromString(phone.trim(), defaultCountry)
+    const parsed = parsePhoneNumberFromString(phone.trim(), defaultCountry as any)
     return !!parsed && parsed.isValid()
   } catch (e) {
     return false
@@ -90,7 +90,7 @@ export function validatePhoneNumber(phone: string, defaultCountry = 'IN'): boole
 export function formatPhoneNumberToE164(phone: string, defaultCountry = 'IN'): string | null {
   if (!phone || typeof phone !== 'string') return null
   try {
-    const parsed = parsePhoneNumberFromString(phone.trim(), defaultCountry)
+    const parsed = parsePhoneNumberFromString(phone.trim(), defaultCountry as any)
     if (!parsed || !parsed.isValid()) return null
     return parsed.format('E.164')
   } catch (e) {
