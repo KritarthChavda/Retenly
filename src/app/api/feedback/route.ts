@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { feedbackSchema, sanitizeText } from '@/lib/validation'
+import { feedbackSchema, sanitizeText, formatPhoneNumberToE164, validatePhoneNumber } from '@/lib/validation'
 import { logger } from '@/lib/logger'
 import type { Form, Restaurant } from '@/generated/prisma'
 
@@ -16,7 +16,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { formId, restaurantSlug } = body
 
-    // Validate input
+    // Validate phone number first (required behavior)
+    const rawPhone = body?.phoneNumber
+    if (!rawPhone || typeof rawPhone !== 'string' || !rawPhone.trim()) {
+      return NextResponse.json({ error: 'Phone number is required' }, { status: 400 })
+    }
+
+    if (!validatePhoneNumber(rawPhone)) {
+      return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
+    }
+
+    const normalizedPhone = formatPhoneNumberToE164(rawPhone)
+    if (!normalizedPhone) {
+      return NextResponse.json({ error: 'Unable to format phone number' }, { status: 400 })
+    }
+
+    // Replace body.phoneNumber with normalized value so downstream validation sees formatted number
+    body.phoneNumber = normalizedPhone
+
+    // Now run the full schema validation for the rest of the fields
     const validation = feedbackSchema.safeParse(body)
     if (!validation.success) {
       // Logger likely expects a string — stringify metadata
@@ -66,7 +84,7 @@ export async function POST(request: NextRequest) {
     const newFeedback = await prisma.feedback.create({
       data: {
         name: sanitizedName,
-        phoneNumber: phoneNumber,
+        phoneNumber,
         experience,
         feedback: sanitizedFeedback,
         formId: targetForm.id,

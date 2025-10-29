@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { parsePhoneNumberFromString } from 'libphonenumber-js'
 
 /**
  * Production-ready validation schemas using Zod
@@ -71,9 +72,30 @@ export function validateRestaurantSlug(name: string): string {
 /**
  * Validate phone number format
  */
-export function validatePhoneNumber(phone: string): boolean {
-  const phoneRegex = /^\+?[\d\s\-\(\)]{10,20}$/
-  return phoneRegex.test(phone.trim())
+export function validatePhoneNumber(phone: string, defaultCountry = 'IN'): boolean {
+  if (!phone || typeof phone !== 'string') return false
+  try {
+    const parsed = parsePhoneNumberFromString(phone.trim(), defaultCountry)
+    return !!parsed && parsed.isValid()
+  } catch (e) {
+    return false
+  }
+}
+
+/**
+ * Format a provided phone number to E.164 (include country code).
+ * If the number is invalid, returns null.
+ * Example: '8949472707' -> '+918949472707' (with defaultCountry='IN')
+ */
+export function formatPhoneNumberToE164(phone: string, defaultCountry = 'IN'): string | null {
+  if (!phone || typeof phone !== 'string') return null
+  try {
+    const parsed = parsePhoneNumberFromString(phone.trim(), defaultCountry)
+    if (!parsed || !parsed.isValid()) return null
+    return parsed.format('E.164')
+  } catch (e) {
+    return null
+  }
 }
 
 /**
