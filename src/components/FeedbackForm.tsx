@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -12,9 +12,10 @@ import { useToast } from '@/hooks/use-toast'
 import restaurantCover from "@/assets/restaurant-cover.jpg"
 import restaurantLogo from "@/assets/restaurant-logo.png"
 import Link from "next/link"
+import { addRecording } from '@/lib/indexedDB'
 
 interface FeedbackFormProps {
-  onSubmit: (data: FeedbackData) => void
+  onSubmit: (data: Omit<FeedbackData, 'voiceRecordingUrl'>) => Promise<{ id: string } | undefined>;
   isSubmitting: boolean
   restaurantName?: string
   tagline?: string
@@ -28,6 +29,7 @@ export interface FeedbackData {
   phoneNumber: string
   experience: string
   feedback?: string
+  voiceRecordingUrl?: string
 }
 
 const emojiRatings = [
@@ -38,17 +40,6 @@ const emojiRatings = [
   { emoji: "😍", value: 'YO!', label: "Excellent", color: "text-blue-500" },
 ]
 
-/**
- * Premium restaurant feedback form component with modern styling
- * 
- * @param onSubmit - Callback function when form is submitted
- * @param isSubmitting - Boolean to show loading state
- * @param restaurantName - Name of the restaurant (optional)
- * @param tagline - Tagline or welcome message (optional)
- * @param coverImage - URL to cover image (optional)
- * @param logoImage - URL to logo image (optional)
- * @returns JSX element containing the feedback form
- */
 export default function FeedbackForm({
   onSubmit,
   isSubmitting,
@@ -58,45 +49,70 @@ export default function FeedbackForm({
   logoImage = restaurantLogo.src,
   isDefault = false
 }: FeedbackFormProps) {
-  const [formData, setFormData] = useState<FeedbackData>({
+  const [formData, setFormData] = useState<Omit<FeedbackData, 'voiceRecordingUrl'>>({
     name: '',
     phoneNumber: '',
     experience: '',
     feedback: ''
   })
-    const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [isRecording, setIsRecording] = useState(false)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
   const { toast } = useToast()
 
-  const handleInputChange = (field: keyof FeedbackData, value: string) => {
+  const handleInputChange = (field: keyof Omit<FeedbackData, 'voiceRecordingUrl'>, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }))
+      setErrors(prev => ({ ...prev, [field]: '' }))
     }
   }
 
-  const handleVoiceRecording = () => {
-    setIsRecording(!isRecording)
-    if (!isRecording) {
-      toast({
-        title: "Recording started",
-        description: "Speak your thoughts! Tap again to stop.",
-      })
-    } else {
+  const handleVoiceRecording = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop()
+      setIsRecording(false)
       toast({
         title: "Recording saved",
         description: "Your voice feedback has been captured.",
       })
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        mediaRecorderRef.current = new MediaRecorder(stream)
+        audioChunksRef.current = []
+
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          audioChunksRef.current.push(event.data)
+        }
+
+        mediaRecorderRef.current.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+          setAudioBlob(audioBlob)
+          stream.getTracks().forEach(track => track.stop()) // Stop microphone access
+        }
+
+        mediaRecorderRef.current.start()
+        setIsRecording(true)
+        toast({
+          title: "Recording started",
+          description: "Speak your thoughts! Tap again to stop.",
+        })
+      } catch (error) {
+        console.error("Error accessing microphone:", error)
+        toast({
+          title: "Error",
+          description: "Could not access microphone. Please check your browser permissions.",
+          variant: "destructive"
+        })
+      }
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-      const newErrors: Record<string, string> = {}
+    const newErrors: Record<string, string> = {}
 
     if (!formData.name.trim()) {
         newErrors.name = 'Please fill out this field.'
@@ -104,7 +120,6 @@ export default function FeedbackForm({
       return
     }
 
-    // Validate phone first (required behavior)
     if (!formData.phoneNumber.trim()) {
         newErrors.phoneNumber = 'Please fill out this field.'
         setErrors(newErrors)
@@ -117,24 +132,41 @@ export default function FeedbackForm({
       return
     }
 
-    // Then validate other required fields
     if (!formData.experience) {
         newErrors.experience = 'Please select a rating.'
         setErrors(newErrors)
       return
     }
 
-    // Validate feedback is required
-    if (!formData.feedback || !formData.feedback.trim()) {
-        newErrors.feedback = 'Please share your feedback.'
+    if (!formData.feedback?.trim() && !audioBlob) {
+        newErrors.feedback = 'Please share your feedback in text or as a voice message.'
         setErrors(newErrors)
       return
     }
 
-    // Normalize to E.164 for backend storage
-    const formatted = formatPhoneNumberToE164(formData.phoneNumber) || formData.phoneNumber
+    const formattedPhone = formatPhoneNumberToE164(formData.phoneNumber) || formData.phoneNumber
+    const submissionData = { ...formData, phoneNumber: formattedPhone };
 
-    onSubmit({ ...formData, phoneNumber: formatted })
+    const result = await onSubmit(submissionData);
+
+    if (result && result.id && audioBlob) {
+      try {
+        await addRecording(result.id, audioBlob);
+        
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+          navigator.serviceWorker.ready.then(registration => {
+            registration.sync.register('voice-feedback-upload');
+          });
+        }
+      } catch (error) {
+        console.error("Failed to save recording for background sync:", error);
+        toast({
+          title: "Upload Warning",
+          description: "Could not save voice recording for background upload. It will be uploaded when you're online.",
+          variant: "destructive"
+        });
+      }
+    }
   }
 
   return (
@@ -350,4 +382,5 @@ export default function FeedbackForm({
       </div>
     </div>
   )
-} 
+}
+ 

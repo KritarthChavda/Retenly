@@ -84,8 +84,8 @@ export default function CustomerForm() {
     }
   }
 
-  const handleSubmit = async (data: FeedbackData) => {
-    if (isSubmitting) return // Prevent duplicate submissions
+  const handleSubmit = async (data: FeedbackData): Promise<{ id: string } | undefined> => {
+    if (isSubmitting) return;
     
     setIsSubmitting(true)
     setCustomerName(data.name)
@@ -100,7 +100,9 @@ export default function CustomerForm() {
       })
 
       if (response.ok) {
-        setIsSubmitted(true)
+        setIsSubmitted(true);
+        const result = await response.json();
+        return { id: result.feedbackId };
       } else {
         const errorData = await response.json()
         alert(`Error: ${errorData.error || 'Failed to submit form'}`)
