@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Mic, MicOff } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 import { validatePhoneNumber, formatPhoneNumberToE164 } from '@/lib/validation'
+import { ErrorTooltip } from '@/components/ui/error-tooltip'
+import { useToast } from '@/hooks/use-toast'
 import restaurantCover from "@/assets/restaurant-cover.jpg"
 import restaurantLogo from "@/assets/restaurant-logo.png"
 import Link from "next/link"
@@ -63,11 +64,19 @@ export default function FeedbackForm({
     experience: '',
     feedback: ''
   })
+    const [errors, setErrors] = useState<Record<string, string>>({})
   const [isRecording, setIsRecording] = useState(false)
   const { toast } = useToast()
 
   const handleInputChange = (field: keyof FeedbackData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }))
+    }
   }
 
   const handleVoiceRecording = () => {
@@ -87,41 +96,38 @@ export default function FeedbackForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!formData.experience) {
-      toast({
-        title: "Please rate your experience",
-        description: "Your rating helps us improve!",
-        variant: "destructive",
-      })
-      return
-    }
+      const newErrors: Record<string, string> = {}
 
     if (!formData.name.trim()) {
-      toast({
-        title: "Name is required",
-        description: "Please enter your name to continue.",
-        variant: "destructive",
-      })
+        newErrors.name = 'Please fill out this field.'
+        setErrors(newErrors)
       return
     }
 
+    // Validate phone first (required behavior)
     if (!formData.phoneNumber.trim()) {
-      toast({
-        title: "Phone number is required",
-        description: "Please enter your phone number to continue.",
-        variant: "destructive",
-      })
+        newErrors.phoneNumber = 'Please fill out this field.'
+        setErrors(newErrors)
       return
     }
 
-    // Validate using libphonenumber; default country IN if not provided
     if (!validatePhoneNumber(formData.phoneNumber)) {
-      toast({
-        title: 'Invalid phone number',
-        description: 'Please enter a valid phone number including country code or leave country code to default (+91).',
-        variant: 'destructive'
-      })
+        newErrors.phoneNumber = 'Please enter a valid phone number.'
+        setErrors(newErrors)
+      return
+    }
+
+    // Then validate other required fields
+    if (!formData.experience) {
+        newErrors.experience = 'Please select a rating.'
+        setErrors(newErrors)
+      return
+    }
+
+    // Validate feedback is required
+    if (!formData.feedback || !formData.feedback.trim()) {
+        newErrors.feedback = 'Please share your feedback.'
+        setErrors(newErrors)
       return
     }
 
@@ -183,30 +189,44 @@ export default function FeedbackForm({
                 <Label htmlFor="name" className="text-sm font-medium text-white">
                   Your Name
                 </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Enter your name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  className="bg-slate-700/50 border-slate-500 focus:ring-purple-500"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Enter your name"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className={`w-full bg-slate-700/50 border-slate-500 focus:ring-purple-500 ${
+                      errors.name ? 'border-purple-500' : 'border-slate-500'
+                    }`}
+                  />
+                  <ErrorTooltip
+                    show={!!errors.name}
+                    message={errors.name || ''}
+                  />
+                </div>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber" className="text-sm font-medium text-white">
                   Phone Number
                 </Label>
-                <Input
-                  id="phoneNumber"
-                  type="tel"
-                  placeholder="Your phone number"
-                  value={formData.phoneNumber}
-                  onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-                  className="bg-slate-700/50 border-slate-500 focus:ring-purple-500"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="phoneNumber"
+                    type="tel"
+                    placeholder="Your phone number"
+                    value={formData.phoneNumber}
+                    onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
+                    className={`w-full bg-slate-700/50 border-slate-500 focus:ring-purple-500 ${
+                      errors.phoneNumber ? 'border-purple-500' : 'border-slate-500'
+                    }`}
+                  />
+                  <ErrorTooltip
+                    show={!!errors.phoneNumber}
+                    message={errors.phoneNumber || ''}
+                  />
+                </div>
               </div>
             </div>
 
@@ -215,22 +235,29 @@ export default function FeedbackForm({
               <Label className="text-sm font-medium text-white">
                 How was your experience?
               </Label>
-              <div className="flex justify-center space-x-2 sm:space-x-4">
-                {emojiRatings.map((rating) => (
-                  <button
-                    key={rating.value}
-                    type="button"
-                    onClick={() => handleInputChange("experience", rating.value)}
-                    className={`transition-all duration-300 ease-out cursor-pointer select-none text-4xl sm:text-5xl p-2 rounded-lg ${
-                      formData.experience === rating.value 
-                        ? "filter-none brightness-100 scale-125" 
-                        : "filter grayscale brightness-50 scale-100"
-                    } hover:filter-none hover:brightness-100 hover:scale-110`}
-                    title={rating.label}
-                  >
-                    {rating.emoji}
-                  </button>
-                ))}
+              <div className="relative">
+                <div className="flex justify-center space-x-2 sm:space-x-4">
+                  {emojiRatings.map((rating) => (
+                    <button
+                      key={rating.value}
+                      type="button"
+                      onClick={() => handleInputChange("experience", rating.value)}
+                      className={`transition-all duration-300 ease-out cursor-pointer select-none text-4xl sm:text-5xl p-2 rounded-lg ${
+                        formData.experience === rating.value 
+                          ? "filter-none brightness-100 scale-125" 
+                          : "filter grayscale brightness-50 scale-100"
+                      } hover:filter-none hover:brightness-100 hover:scale-110`}
+                      title={rating.label}
+                    >
+                      {rating.emoji}
+                    </button>
+                  ))}
+                </div>
+                {errors.experience && (
+                  <div className="absolute left-1/2 transform -translate-x-1/2 top-full w-max">
+                    <ErrorTooltip show={!!errors.experience} message={errors.experience} />
+                  </div>
+                )}
               </div>
               {formData.experience && (
                 <p className="text-center text-sm text-slate-400">
@@ -269,16 +296,21 @@ export default function FeedbackForm({
             {/* Comments */}
             <div className="space-y-2">
               <Label htmlFor="feedback" className="text-sm font-medium text-white">
-                Additional Comments
+                Your Valuable Feedback <span className="text-amber-400">*</span>
               </Label>
-              <Textarea
-                id="feedback"
-                placeholder="Don't hold back — your words matter! Tell us what made your visit special or how we can improve."
-                value={formData.feedback}
-                onChange={(e) => handleInputChange("feedback", e.target.value)}
-                className="min-h-32 bg-slate-700/50 border-slate-500 focus:ring-purple-500 resize-none"
-                rows={4}
-              />
+              <div className="relative">
+                <Textarea
+                  id="feedback"
+                  placeholder="Don't hold back — your words matter! Tell us what made your visit special or how we can improve."
+                  value={formData.feedback}
+                  onChange={(e) => handleInputChange("feedback", e.target.value)}
+                  className={`min-h-32 bg-slate-700/50 focus:ring-purple-500 resize-none ${
+                    errors.feedback ? 'border-purple-500' : 'border-slate-500'
+                  }`}
+                  rows={4}
+                />
+                <ErrorTooltip show={!!errors.feedback} message={errors.feedback || ''} />
+              </div>
             </div>
 
             {/* Submit Button */}

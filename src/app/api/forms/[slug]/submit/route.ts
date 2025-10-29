@@ -52,14 +52,26 @@ export async function POST(
     }
 
     const form = restaurant.forms[0]
-  const phoneNumber = extractPhoneNumber(answers)
+    const phoneNumber = extractPhoneNumber(answers)
     const customerName = extractCustomerName(answers)
+
+    // Validate & normalize phone number first (required behavior)
+    let normalizedPhone: string | null = null
+    if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim().length > 0) {
+      if (!validatePhoneNumber(phoneNumber)) {
+        return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
+      }
+      normalizedPhone = formatPhoneNumberToE164(phoneNumber)
+      if (!normalizedPhone) {
+        return NextResponse.json({ error: 'Unable to format phone number' }, { status: 400 })
+      }
+    }
 
     console.log('Processing feedback:', {
       restaurantName: restaurant.name,
       formTitle: form.title,
       customerName,
-      phoneNumber,
+      phoneNumber: normalizedPhone ?? phoneNumber,
       experience: answers.experience
     })
 
@@ -103,18 +115,6 @@ export async function POST(
       rating = extractRatingFromAnswers(answers) || 3
       if (rating >= 4) sentiment = 'positive'
       else if (rating <= 2) sentiment = 'negative'
-    }
-
-    // Validate & normalize phone number
-    let normalizedPhone: string | null = null
-    if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim().length > 0) {
-      if (!validatePhoneNumber(phoneNumber)) {
-        return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
-      }
-      normalizedPhone = formatPhoneNumberToE164(phoneNumber)
-      if (!normalizedPhone) {
-        return NextResponse.json({ error: 'Unable to format phone number' }, { status: 400 })
-      }
     }
 
     // Create feedback record

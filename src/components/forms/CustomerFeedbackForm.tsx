@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ErrorTooltip } from '@/components/ui/error-tooltip'
 import { validatePhoneNumber, formatPhoneNumberToE164 } from '@/lib/validation'
 
 interface CustomerFeedbackFormProps {
@@ -85,28 +86,28 @@ export default function CustomerFeedbackForm({
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-    
-    if (showName && !formData.name.trim()) {
-      newErrors.name = 'Name is required'
-    }
-    
+
+    // Validate phone first (required behavior)
     if (showPhone && !formData.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Phone number is required'
     } else if (showPhone && formData.phoneNumber.trim()) {
-      // Validate and provide helpful error
       if (!validatePhoneNumber(formData.phoneNumber)) {
         newErrors.phoneNumber = 'Please enter a valid phone number (include country code or leave to default +91)'
       }
     }
-    
+
+    if (showName && !formData.name.trim()) {
+      newErrors.name = 'Name is required'
+    }
+
     if (showRating && formData.rating === 0) {
       newErrors.rating = 'Please select a rating'
     }
-    
+
     if (showFeedback && !formData.feedback.trim()) {
       newErrors.feedback = 'Feedback is required'
     }
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -237,20 +238,23 @@ export default function CustomerFeedbackForm({
                   <span className="mr-2">👤</span>
                   What is your Name?
                 </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${
-                    errors.name 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-white/20 focus:ring-green-500'
-                  }`}
-                  placeholder="Enter your name..."
-                />
-                {errors.name && (
-                  <p className="text-red-400 text-sm">{errors.name}</p>
-                )}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 transition-all duration-200 ${
+                      errors.name 
+                        ? 'border-purple-500 focus:ring-purple-500/50' 
+                        : 'border-white/20 focus:ring-purple-500/50'
+                    }`}
+                    placeholder="Enter your name"
+                  />
+                  <ErrorTooltip 
+                    show={!!errors.name} 
+                    message="Please fill out this field."
+                  />
+                </div>
               </div>
             )}
 
@@ -261,20 +265,23 @@ export default function CustomerFeedbackForm({
                   <span className="mr-2">📱</span>
                   What is your Phone Number?
                 </label>
-                <input
-                  type="tel"
-                  value={formData.phoneNumber}
-                  onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                  className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${
-                    errors.phoneNumber 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-white/20 focus:ring-green-500'
-                  }`}
-                  placeholder="Enter your phone number..."
-                />
-                {errors.phoneNumber && (
-                  <p className="text-red-400 text-sm">{errors.phoneNumber}</p>
-                )}
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                    className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 transition-all duration-200 ${
+                      errors.phoneNumber 
+                        ? 'border-purple-500 focus:ring-purple-500/50' 
+                        : 'border-white/20 focus:ring-purple-500/50'
+                    }`}
+                    placeholder="Your phone number"
+                  />
+                  <ErrorTooltip 
+                    show={!!errors.phoneNumber} 
+                    message="Please fill out this field."
+                  />
+                </div>
               </div>
             )}
 
@@ -301,7 +308,10 @@ export default function CustomerFeedbackForm({
                   ))}
                 </div>
                 {errors.rating && (
-                  <p className="text-red-400 text-sm text-center">{errors.rating}</p>
+                  <p className="text-amber-400/90 text-xs mt-1.5 flex items-center justify-center">
+                    <span className="mr-1">ⓘ</span>
+                    {errors.rating}
+                  </p>
                 )}
               </div>
             )}
@@ -317,15 +327,18 @@ export default function CustomerFeedbackForm({
                   value={formData.feedback}
                   onChange={(e) => handleInputChange('feedback', e.target.value)}
                   rows={4}
-                  className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 resize-none ${
+                  className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 transition-all duration-200 resize-none ${
                     errors.feedback 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-white/20 focus:ring-green-500'
+                      ? 'border-amber-400/50 focus:ring-amber-400/50' 
+                      : 'border-white/20 focus:ring-green-500/50'
                   }`}
                   placeholder="Share your thoughts with us..."
                 />
                 {errors.feedback && (
-                  <p className="text-red-400 text-sm">{errors.feedback}</p>
+                  <p className="text-amber-400/90 text-xs mt-1.5 flex items-center">
+                    <span className="mr-1">ⓘ</span>
+                    {errors.feedback}
+                  </p>
                 )}
               </div>
             )}

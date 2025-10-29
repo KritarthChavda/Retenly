@@ -16,7 +16,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { formId, restaurantSlug } = body
 
-    // Validate input
+    // Validate phone number first (required behavior)
+    const rawPhone = body?.phoneNumber
+    if (!rawPhone || typeof rawPhone !== 'string' || !rawPhone.trim()) {
+      return NextResponse.json({ error: 'Phone number is required' }, { status: 400 })
+    }
+
+    if (!validatePhoneNumber(rawPhone)) {
+      return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
+    }
+
+    const normalizedPhone = formatPhoneNumberToE164(rawPhone)
+    if (!normalizedPhone) {
+      return NextResponse.json({ error: 'Unable to format phone number' }, { status: 400 })
+    }
+
+    // Replace body.phoneNumber with normalized value so downstream validation sees formatted number
+    body.phoneNumber = normalizedPhone
+
+    // Now run the full schema validation for the rest of the fields
     const validation = feedbackSchema.safeParse(body)
     if (!validation.success) {
       // Logger likely expects a string — stringify metadata
@@ -62,23 +80,11 @@ export async function POST(request: NextRequest) {
     // Hash the phone number
     // const hashedPhoneNumber = await bcrypt.hash(phoneNumber, 10)
 
-    // Validate & normalize phone number on backend
-    let normalizedPhone: string | null = null
-    if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim().length > 0) {
-      if (!validatePhoneNumber(phoneNumber)) {
-        return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
-      }
-      normalizedPhone = formatPhoneNumberToE164(phoneNumber) // defaultCountry = 'IN' inside helper
-      if (!normalizedPhone) {
-        return NextResponse.json({ error: 'Unable to format phone number' }, { status: 400 })
-      }
-    }
-
     // Create feedback record
     const newFeedback = await prisma.feedback.create({
       data: {
         name: sanitizedName,
-        phoneNumber: normalizedPhone ?? phoneNumber,
+        phoneNumber,
         experience,
         feedback: sanitizedFeedback,
         formId: targetForm.id,
