@@ -1,6 +1,14 @@
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 const DB_NAME = 'voice-recordings-db';
-const DB_VERSION = 1;
-const STORE_NAME = 'recordings';
+const DB_VERSION = 2;
+const STORE_NAME = 'pending-feedback';
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -20,7 +28,7 @@ function openDB() {
   });
 }
 
-async function getOldestRecording() {
+async function getOldestPendingFeedback() {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readonly');
@@ -40,7 +48,7 @@ async function getOldestRecording() {
   });
 }
 
-async function deleteRecording(id) {
+async function deletePendingFeedback(id) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -56,45 +64,64 @@ async function deleteRecording(id) {
 }
 
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'voice-feedback-upload') {
-    event.waitUntil(uploadVoiceRecording());
+  if (event.tag === 'submit-feedback') {
+    event.waitUntil(processPendingFeedback());
   }
 });
 
-async function uploadVoiceRecording() {
-  const recording = await getOldestRecording();
-  if (!recording) {
+async function processPendingFeedback() {
+  const pendingFeedback = await getOldestPendingFeedback();
+  if (!pendingFeedback) {
     return;
   }
 
-  const { id, blob } = recording;
-  const formData = new FormData();
-  formData.append('file', blob, 'voice-recording.webm');
-  formData.append('feedbackId', id);
+  const { id, slug, formData, audioBlob } = pendingFeedback;
 
   try {
-    const response = await fetch('/api/voice-upload', {
+    // Step 1: Submit the initial feedback data
+    const feedbackResponse = await fetch(`/api/forms/${slug}/submit`, {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ answers: formData }),
     });
 
-    if (!response.ok) {
-      throw new Error('Server response not ok');
+    if (!feedbackResponse.ok) {
+      throw new Error('Failed to submit feedback data');
     }
 
-    // If upload is successful, delete it from IndexedDB
-    await deleteRecording(id);
+    const feedbackResult = await feedbackResponse.json();
+    const feedbackId = feedbackResult.feedbackId;
 
-    // Check for more recordings to upload
-    const nextRecording = await getOldestRecording();
-    if (nextRecording) {
-      // If there are more recordings, request another sync
-      self.registration.sync.register('voice-feedback-upload');
+    // Step 2: If there's an audio blob, upload it
+    if (audioBlob && feedbackId) {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', audioBlob, 'voice-recording.webm');
+      uploadFormData.append('feedbackId', feedbackId);
+
+      const uploadResponse = await fetch('/api/voice-upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload voice recording');
+      }
+    }
+
+    // If all successful, delete the pending record from IndexedDB
+    await deletePendingFeedback(id);
+
+    // Check if there are more items to sync
+    const nextItem = await getOldestPendingFeedback();
+    if (nextItem) {
+      self.registration.sync.register('submit-feedback');
     }
 
   } catch (error) {
-    console.error('Failed to upload voice recording:', error);
-    // If it fails, the browser will automatically retry the sync later
+    console.error('Background sync failed:', error);
+    // The browser will automatically retry later
     throw error;
   }
 }

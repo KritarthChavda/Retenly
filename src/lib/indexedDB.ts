@@ -1,6 +1,6 @@
 const DB_NAME = 'voice-recordings-db';
-const DB_VERSION = 1;
-const STORE_NAME = 'recordings';
+const DB_VERSION = 2;
+const STORE_NAME = 'pending-feedback';
 
 function openDB() {
   return new Promise<IDBDatabase>((resolve, reject) => {
@@ -20,12 +20,12 @@ function openDB() {
   });
 }
 
-export async function addRecording(id: string, blob: Blob) {
+export async function addFeedback(id: string, slug: string, formData: any, audioBlob: Blob | null) {
   const db = await openDB();
   return new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.put({ id, blob });
+    const request = store.put({ id, slug, formData, audioBlob });
     request.onsuccess = () => {
       resolve();
     };

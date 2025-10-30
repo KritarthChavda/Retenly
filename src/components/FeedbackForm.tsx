@@ -7,21 +7,21 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Mic, MicOff } from "lucide-react"
 import { validatePhoneNumber, formatPhoneNumberToE164 } from '@/lib/validation'
-import { ErrorTooltip } from '@/components/ui/error-tooltip'
+import { ErrorTooltip } from "@/components/ui/error-tooltip"
 import { useToast } from '@/hooks/use-toast'
 import restaurantCover from "@/assets/restaurant-cover.jpg"
 import restaurantLogo from "@/assets/restaurant-logo.png"
 import Link from "next/link"
-import { addRecording } from '@/lib/indexedDB'
+import { addFeedback } from '@/lib/indexedDB'
 
 interface FeedbackFormProps {
-  onSubmit: (data: Omit<FeedbackData, 'voiceRecordingUrl'>) => Promise<{ id: string } | undefined>;
-  isSubmitting: boolean
-  restaurantName?: string
-  tagline?: string
-  coverImage?: string
-  logoImage?: string
-  isDefault?: boolean
+  onSubmit: (data: FeedbackData) => void;
+  restaurantSlug: string;
+  restaurantName?: string;
+  tagline?: string;
+  coverImage?: string;
+  logoImage?: string;
+  isDefault?: boolean;
 }
 
 export interface FeedbackData {
@@ -42,7 +42,7 @@ const emojiRatings = [
 
 export default function FeedbackForm({
   onSubmit,
-  isSubmitting,
+  restaurantSlug,
   restaurantName = "Downtown Rajkot",
   tagline = "Spill the beans — we're all ears! 🍽️",
   coverImage = restaurantCover.src,
@@ -58,6 +58,7 @@ export default function FeedbackForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isRecording, setIsRecording] = useState(false)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const { toast } = useToast()
@@ -111,61 +112,112 @@ export default function FeedbackForm({
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const newErrors: Record<string, string> = {}
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-        newErrors.name = 'Please fill out this field.'
-        setErrors(newErrors)
-      return
+      newErrors.name = 'Please fill out this field.';
+      setErrors(newErrors);
+      return;
     }
 
     if (!formData.phoneNumber.trim()) {
-        newErrors.phoneNumber = 'Please fill out this field.'
-        setErrors(newErrors)
-      return
+      newErrors.phoneNumber = 'Please fill out this field.';
+      setErrors(newErrors);
+      return;
     }
 
     if (!validatePhoneNumber(formData.phoneNumber)) {
-        newErrors.phoneNumber = 'Please enter a valid phone number.'
-        setErrors(newErrors)
-      return
+      newErrors.phoneNumber = 'Please enter a valid phone number.';
+      setErrors(newErrors);
+      return;
     }
 
     if (!formData.experience) {
-        newErrors.experience = 'Please select a rating.'
-        setErrors(newErrors)
-      return
+      newErrors.experience = 'Please select a rating.';
+      setErrors(newErrors);
+      return;
     }
 
     if (!formData.feedback?.trim() && !audioBlob) {
-        newErrors.feedback = 'Please share your feedback in text or as a voice message.'
-        setErrors(newErrors)
-      return
+      newErrors.feedback = 'Please share your feedback in text or as a voice message.';
+      setErrors(newErrors);
+      return;
     }
 
-    const formattedPhone = formatPhoneNumberToE164(formData.phoneNumber) || formData.phoneNumber
+    setIsSubmitting(true);
+    console.log("Form submission started.");
+
+    const formattedPhone = formatPhoneNumberToE164(formData.phoneNumber) || formData.phoneNumber;
     const submissionData = { ...formData, phoneNumber: formattedPhone };
+    console.log("Submission data:", submissionData);
 
-    const result = await onSubmit(submissionData);
-
-    if (result && result.id && audioBlob) {
-      try {
-        await addRecording(result.id, audioBlob);
+    try {
+      if ('serviceWorker' in navigator && 'SyncManager' in window) {
+        console.log("Service Worker and SyncManager found. Using background sync.");
+        const id = new Date().toISOString(); // Simple unique ID
+        await addFeedback(id, restaurantSlug, submissionData, audioBlob);
         
-        if ('serviceWorker' in navigator && 'SyncManager' in window) {
-          navigator.serviceWorker.ready.then(registration => {
-            registration.sync.register('voice-feedback-upload');
+        const registration = await navigator.serviceWorker.ready;
+        console.log("Service Worker is ready. Registering sync event 'submit-feedback'.");
+        await registration.sync.register('submit-feedback');
+
+        toast({
+          title: "Queued for Submission",
+          description: "Your feedback will be submitted in the background.",
+        });
+
+        onSubmit(submissionData);
+      } else {
+        console.log("Service Worker or SyncManager not found. Using fallback submission.");
+        
+        // Fallback for older browsers that don't support background sync.
+        // First, submit the main feedback data to get a feedbackId.
+        const response = await fetch(`/api/forms/${restaurantSlug}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers: submissionData }),
+        });
+
+        if (!response.ok) throw new Error('Submission failed');
+        
+        const result = await response.json();
+        const feedbackId = result.feedbackId;
+
+        // Immediately show the thank you page.
+        onSubmit(submissionData);
+
+        // Then, if there's a voice recording, upload it in the background
+        // without making the user wait.
+        if (audioBlob && feedbackId) {
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', audioBlob, 'voice-recording.webm');
+          uploadFormData.append('feedbackId', feedbackId);
+
+          fetch('/api/voice-upload', {
+            method: 'POST',
+            body: uploadFormData,
+          })
+          .then(uploadResponse => {
+            if (uploadResponse.ok) {
+              console.log('Fallback voice upload successful.');
+            } else {
+              console.error('Fallback voice upload failed.');
+              toast({ title: "Voice Upload Failed", description: "We couldn't upload your voice message.", variant: "destructive" });
+            }
+          })
+          .catch(error => {
+            console.error("Fallback voice upload error:", error);
+            toast({ title: "Voice Upload Error", description: "An error occurred while uploading your voice message.", variant: "destructive" });
           });
         }
-      } catch (error) {
-        console.error("Failed to save recording for background sync:", error);
-        toast({
-          title: "Upload Warning",
-          description: "Could not save voice recording for background upload. It will be uploaded when you're online.",
-          variant: "destructive"
-        });
       }
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast({ title: "Error", description: "Failed to submit feedback.", variant: "destructive" });
+      setIsSubmitting(false);
     }
   }
 
@@ -383,4 +435,3 @@ export default function FeedbackForm({
     </div>
   )
 }
- 
