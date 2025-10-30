@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from "react";
-import { Search, Download, Eye, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Search, Download, Eye, Star, ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,13 @@ export default function AllFeedback() {
   const [ratingFilter, setRatingFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
+  
+  // Audio player states
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  
   const itemsPerPage = 8;
 
   if (!restaurant || !allFeedback) {
@@ -100,6 +107,51 @@ export default function AllFeedback() {
     }
   };
 
+  // Audio player functions
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Reset audio when switching feedback
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+  }, [selectedFeedback]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,7 +169,6 @@ export default function AllFeedback() {
               <Download className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
-
           </div>
         </div>
 
@@ -234,9 +285,38 @@ export default function AllFeedback() {
                         <p className="text-sm text-muted-foreground mb-2">
                           <strong>Rating:</strong> {feedback.rating}/5 stars
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground mb-2">
                           <strong>Sentiment:</strong> {getSentimentLabel(feedback.sentiment)}
                         </p>
+                        {feedback.voiceRecordingUrl && (
+                          <div className="mt-3">
+                            <p className="text-sm text-muted-foreground mb-1.5">
+                              <strong>Voice Recording:</strong>
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <audio
+                                ref={audioRef}
+                                src={feedback.voiceRecordingUrl}
+                                onTimeUpdate={handleTimeUpdate}
+                                onLoadedMetadata={handleLoadedMetadata}
+                                onEnded={handleEnded}
+                                preload="metadata"
+                                style={{ display: 'none' }}
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={togglePlayPause}
+                                className="h-8 w-8 p-0"
+                              >
+                                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTime(currentTime)} / {formatTime(duration)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div>
                         <h4 className="font-semibold mb-2">Full Feedback</h4>
