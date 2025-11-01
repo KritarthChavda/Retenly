@@ -142,7 +142,7 @@ export default function FeedbackForm({
     }
 
     if (!formData.feedback?.trim() && !audioBlob) {
-      newErrors.feedback = 'Please share your feedback or a voice message';
+      newErrors.feedback = 'Please share your feedback/voice message';
       setErrors(newErrors);
       return;
     }
@@ -348,7 +348,7 @@ export default function FeedbackForm({
             {/* Voice Recording */}
             <div className="text-center">
               <Label className="text-sm font-medium block mb-3 text-white">
-                Leave a Voice Message (Optional)
+                Leave a Voice Message
               </Label>
               <Button
                 type="button"
