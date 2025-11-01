@@ -54,6 +54,7 @@ interface FeedbackItem {
   feedback: string;
   sentiment: "positive" | "negative" | "neutral";
   tags?: string[];
+  voiceRecordingUrl?: string;
 }
 
 export type FeedbackWindow = "7d" | "30d" | "90d"
