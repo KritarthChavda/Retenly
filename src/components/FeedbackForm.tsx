@@ -142,7 +142,7 @@ export default function FeedbackForm({
     }
 
     if (!formData.feedback?.trim() && !audioBlob) {
-      newErrors.feedback = 'Please share your feedback in text or as a voice message.';
+      newErrors.feedback = 'Please share your feedback or a voice message';
       setErrors(newErrors);
       return;
     }
@@ -163,11 +163,6 @@ export default function FeedbackForm({
         const registration = await navigator.serviceWorker.ready;
         console.log("Service Worker is ready. Registering sync event 'submit-feedback'.");
         await registration.sync.register('submit-feedback');
-
-        toast({
-          title: "Queued for Submission",
-          description: "Your feedback will be submitted in the background.",
-        });
 
         onSubmit(submissionData);
       } else {
