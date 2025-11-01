@@ -4,44 +4,23 @@ import { useState } from 'react'
 import FeedbackForm, { FeedbackData } from '@/components/FeedbackForm'
 import ThankYouPage from '@/components/ThankYouPage'
 
-//test
-
 interface DefaultFeedbackExperienceProps {
   restaurantName?: string
 }
 
 export function DefaultFeedbackExperience({
-  restaurantName = 'Downtown Rajkot ',
+  restaurantName = 'Downtown Rajkot',
 }: DefaultFeedbackExperienceProps) {
   const [isSubmitted, setIsSubmitted] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [customerName, setCustomerName] = useState('')
 
   const handleSubmit = async (data: FeedbackData) => {
-    setIsSubmitting(true)
+    // The `FeedbackForm` component handles submission (including
+    // background sync / fallbacks) and calls this `onSubmit` callback
+    // when the form has been accepted. For the demo experience we
+    // simply capture the name and show the thank-you page.
     setCustomerName(data.name)
-
-    try {
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (response.ok) {
-        setIsSubmitted(true)
-      } else {
-        const errorData = await response.json()
-        alert(`Error: ${errorData.error || 'Something went wrong'}`)
-      }
-    } catch (error) {
-      console.error('Error submitting feedback:', error)
-      alert('Something went wrong. Please try again.')
-    } finally {
-      setIsSubmitting(false)
-    }
+    setIsSubmitted(true)
   }
 
   const handleBack = () => {
@@ -60,10 +39,10 @@ export function DefaultFeedbackExperience({
       ) : (
         <FeedbackForm
           onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
+          restaurantSlug="downtown-rajkot"
           restaurantName={restaurantName}
           tagline="Spill the beans — we're all ears! 🍽️"
-          isDefault = {true}
+          isDefault={true}
         />
       )}
     </div>
