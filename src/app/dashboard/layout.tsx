@@ -127,7 +127,8 @@ export default function DashboardLayout({
           feedback: f.feedback || 'No text feedback',
           rating: f.rating || 3,
           sentiment: f.sentiment?.toLowerCase() || 'neutral',
-          tags: []
+          tags: [],
+          voiceRecordingUrl: f.voiceRecordingUrl,
         }));
         setAllFeedback(transformedFeedback);
       } else {

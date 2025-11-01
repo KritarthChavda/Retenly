@@ -77,16 +77,17 @@ model Question {
 }
 
 model Feedback {
-  id          String   @id @default(cuid())
-  formId      String
-  name        String
-  phoneNumber String
-  experience  String // "YO!", "Pretty good", "Okay-ish", "Not great"
-  feedback    String? // Optional text feedback
-  sentiment   String   @default("neutral") // "positive", "neutral", "negative"
-  rating      Int? // Numeric rating (1-5)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(cuid())
+  formId            String
+  name              String
+  phoneNumber       String
+  experience        String // "YO!", "Pretty good", "Okay-ish", "Not great"
+  feedback          String? // Optional text feedback
+  voiceRecordingUrl String? // URL to the voice recording in storage
+  sentiment         String   @default("neutral") // "positive", "neutral", "negative"
+  rating            Int? // Numeric rating (1-5)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   // Relations
   form Form @relation(fields: [formId], references: [id], onDelete: Cascade)

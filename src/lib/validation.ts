@@ -33,7 +33,8 @@ export const feedbackSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name too long'),
   phoneNumber: z.string().min(10, 'Valid phone number is required').max(20, 'Phone number too long'),
   experience: z.enum(['YO!', 'Pretty good', 'Okay-ish', 'Poor', 'Not great'], { required_error: 'Experience rating is required' }),
-  feedback: z.string().max(1000, 'Feedback too long').optional()
+  feedback: z.string().max(1000, 'Feedback too long').optional(),
+  voiceRecordingUrl: z.string().url().optional()
 })
 
 // Response validation (dynamic forms)

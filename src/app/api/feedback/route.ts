@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { name, phoneNumber, experience, feedback } = validation.data
+    const { name, phoneNumber, experience, feedback, voiceRecordingUrl } = validation.data
 
     // Sanitize text inputs
     const sanitizedName = sanitizeText(name)
@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
         phoneNumber,
         experience,
         feedback: sanitizedFeedback,
+        voiceRecordingUrl,
         formId: targetForm.id,
       },
     })

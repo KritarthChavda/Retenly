@@ -1,26 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Mic, MicOff } from "lucide-react"
 import { validatePhoneNumber, formatPhoneNumberToE164 } from '@/lib/validation'
-import { ErrorTooltip } from '@/components/ui/error-tooltip'
+import { ErrorTooltip } from "@/components/ui/error-tooltip"
 import { useToast } from '@/hooks/use-toast'
 import restaurantCover from "@/assets/restaurant-cover.jpg"
 import restaurantLogo from "@/assets/restaurant-logo.png"
 import Link from "next/link"
+import { addFeedback } from '@/lib/indexedDB'
 
 interface FeedbackFormProps {
-  onSubmit: (data: FeedbackData) => void
-  isSubmitting: boolean
-  restaurantName?: string
-  tagline?: string
-  coverImage?: string
-  logoImage?: string
-  isDefault?: boolean
+  onSubmit: (data: FeedbackData) => void;
+  restaurantSlug: string;
+  restaurantName?: string;
+  tagline?: string;
+  coverImage?: string;
+  logoImage?: string;
+  isDefault?: boolean;
 }
 
 export interface FeedbackData {
@@ -28,6 +29,7 @@ export interface FeedbackData {
   phoneNumber: string
   experience: string
   feedback?: string
+  voiceRecordingUrl?: string
 }
 
 const emojiRatings = [
@@ -38,103 +40,180 @@ const emojiRatings = [
   { emoji: "😍", value: 'YO!', label: "Excellent", color: "text-blue-500" },
 ]
 
-/**
- * Premium restaurant feedback form component with modern styling
- * 
- * @param onSubmit - Callback function when form is submitted
- * @param isSubmitting - Boolean to show loading state
- * @param restaurantName - Name of the restaurant (optional)
- * @param tagline - Tagline or welcome message (optional)
- * @param coverImage - URL to cover image (optional)
- * @param logoImage - URL to logo image (optional)
- * @returns JSX element containing the feedback form
- */
 export default function FeedbackForm({
   onSubmit,
-  isSubmitting,
+  restaurantSlug,
   restaurantName = "Downtown Rajkot",
   tagline = "Spill the beans — we're all ears! 🍽️",
   coverImage = restaurantCover.src,
   logoImage = restaurantLogo.src,
   isDefault = false
 }: FeedbackFormProps) {
-  const [formData, setFormData] = useState<FeedbackData>({
+  const [formData, setFormData] = useState<Omit<FeedbackData, 'voiceRecordingUrl'>>({
     name: '',
     phoneNumber: '',
     experience: '',
     feedback: ''
   })
-    const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [isRecording, setIsRecording] = useState(false)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
   const { toast } = useToast()
 
-  const handleInputChange = (field: keyof FeedbackData, value: string) => {
+  const handleInputChange = (field: keyof Omit<FeedbackData, 'voiceRecordingUrl'>, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }))
+      setErrors(prev => ({ ...prev, [field]: '' }))
     }
   }
 
-  const handleVoiceRecording = () => {
-    setIsRecording(!isRecording)
-    if (!isRecording) {
-      toast({
-        title: "Recording started",
-        description: "Speak your thoughts! Tap again to stop.",
-      })
-    } else {
+  const handleVoiceRecording = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop()
+      setIsRecording(false)
       toast({
         title: "Recording saved",
         description: "Your voice feedback has been captured.",
       })
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        mediaRecorderRef.current = new MediaRecorder(stream)
+        audioChunksRef.current = []
+
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          audioChunksRef.current.push(event.data)
+        }
+
+        mediaRecorderRef.current.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+          setAudioBlob(audioBlob)
+          stream.getTracks().forEach(track => track.stop()) // Stop microphone access
+        }
+
+        mediaRecorderRef.current.start()
+        setIsRecording(true)
+        toast({
+          title: "Recording started",
+          description: "Speak your thoughts! Tap again to stop.",
+        })
+      } catch (error) {
+        console.error("Error accessing microphone:", error)
+        toast({
+          title: "Error",
+          description: "Could not access microphone. Please check your browser permissions.",
+          variant: "destructive"
+        })
+      }
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-      const newErrors: Record<string, string> = {}
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-        newErrors.name = 'Please fill out this field.'
-        setErrors(newErrors)
-      return
+      newErrors.name = 'Please fill out this field.';
+      setErrors(newErrors);
+      return;
     }
 
-    // Validate phone first (required behavior)
     if (!formData.phoneNumber.trim()) {
-        newErrors.phoneNumber = 'Please fill out this field.'
-        setErrors(newErrors)
-      return
+      newErrors.phoneNumber = 'Please fill out this field.';
+      setErrors(newErrors);
+      return;
     }
 
     if (!validatePhoneNumber(formData.phoneNumber)) {
-        newErrors.phoneNumber = 'Please enter a valid phone number.'
-        setErrors(newErrors)
-      return
+      newErrors.phoneNumber = 'Please enter a valid phone number.';
+      setErrors(newErrors);
+      return;
     }
 
-    // Then validate other required fields
     if (!formData.experience) {
-        newErrors.experience = 'Please select a rating.'
-        setErrors(newErrors)
-      return
+      newErrors.experience = 'Please select a rating.';
+      setErrors(newErrors);
+      return;
     }
 
-    // Validate feedback is required
-    if (!formData.feedback || !formData.feedback.trim()) {
-        newErrors.feedback = 'Please share your feedback.'
-        setErrors(newErrors)
-      return
+    if (!formData.feedback?.trim() && !audioBlob) {
+      newErrors.feedback = 'Please share your feedback/voice message';
+      setErrors(newErrors);
+      return;
     }
 
-    // Normalize to E.164 for backend storage
-    const formatted = formatPhoneNumberToE164(formData.phoneNumber) || formData.phoneNumber
+    setIsSubmitting(true);
+    console.log("Form submission started.");
 
-    onSubmit({ ...formData, phoneNumber: formatted })
+    const formattedPhone = formatPhoneNumberToE164(formData.phoneNumber) || formData.phoneNumber;
+    const submissionData = { ...formData, phoneNumber: formattedPhone };
+    console.log("Submission data:", submissionData);
+
+    try {
+      if ('serviceWorker' in navigator && 'SyncManager' in window) {
+        console.log("Service Worker and SyncManager found. Using background sync.");
+        const id = new Date().toISOString(); // Simple unique ID
+        await addFeedback(id, restaurantSlug, submissionData, audioBlob);
+        
+        const registration = await navigator.serviceWorker.ready;
+        console.log("Service Worker is ready. Registering sync event 'submit-feedback'.");
+        await registration.sync.register('submit-feedback');
+
+        onSubmit(submissionData);
+      } else {
+        console.log("Service Worker or SyncManager not found. Using fallback submission.");
+        
+        // Fallback for older browsers that don't support background sync.
+        // First, submit the main feedback data to get a feedbackId.
+        const response = await fetch(`/api/forms/${restaurantSlug}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers: submissionData }),
+        });
+
+        if (!response.ok) throw new Error('Submission failed');
+        
+        const result = await response.json();
+        const feedbackId = result.feedbackId;
+
+        // Immediately show the thank you page.
+        onSubmit(submissionData);
+
+        // Then, if there's a voice recording, upload it in the background
+        // without making the user wait.
+        if (audioBlob && feedbackId) {
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', audioBlob, 'voice-recording.webm');
+          uploadFormData.append('feedbackId', feedbackId);
+
+          fetch('/api/voice-upload', {
+            method: 'POST',
+            body: uploadFormData,
+          })
+          .then(uploadResponse => {
+            if (uploadResponse.ok) {
+              console.log('Fallback voice upload successful.');
+            } else {
+              console.error('Fallback voice upload failed.');
+              toast({ title: "Voice Upload Failed", description: "We couldn't upload your voice message.", variant: "destructive" });
+            }
+          })
+          .catch(error => {
+            console.error("Fallback voice upload error:", error);
+            toast({ title: "Voice Upload Error", description: "An error occurred while uploading your voice message.", variant: "destructive" });
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast({ title: "Error", description: "Failed to submit feedback.", variant: "destructive" });
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -269,7 +348,7 @@ export default function FeedbackForm({
             {/* Voice Recording */}
             <div className="text-center">
               <Label className="text-sm font-medium block mb-3 text-white">
-                Leave a Voice Message (Optional)
+                Leave a Voice Message
               </Label>
               <Button
                 type="button"
@@ -350,4 +429,4 @@ export default function FeedbackForm({
       </div>
     </div>
   )
-} 
+}

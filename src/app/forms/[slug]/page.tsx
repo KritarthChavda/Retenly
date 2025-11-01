@@ -41,7 +41,7 @@ export default function CustomerForm() {
   const [error, setError] = useState('')
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [customerName, setCustomerName] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+
 
   useEffect(() => {
     if (restaurantSlug) {
@@ -84,32 +84,9 @@ export default function CustomerForm() {
     }
   }
 
-  const handleSubmit = async (data: FeedbackData) => {
-    if (isSubmitting) return // Prevent duplicate submissions
-    
-    setIsSubmitting(true)
-    setCustomerName(data.name)
-    
-    try {
-      const response = await fetch(`/api/forms/${restaurantSlug}/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ answers: data }),
-      })
-
-      if (response.ok) {
-        setIsSubmitted(true)
-      } else {
-        const errorData = await response.json()
-        alert(`Error: ${errorData.error || 'Failed to submit form'}`)
-      }
-    } catch (error) {
-      alert('An error occurred. Please try again.')
-    } finally {
-      setIsSubmitting(false)
-    }
+  const handleSubmit = (data: FeedbackData) => {
+    setCustomerName(data.name);
+    setIsSubmitted(true);
   }
 
   const handleBack = () => {
@@ -164,7 +141,7 @@ export default function CustomerForm() {
   return (
     <FeedbackForm 
       onSubmit={handleSubmit}
-      isSubmitting={isSubmitting}
+      restaurantSlug={restaurantSlug}
       restaurantName={form.restaurant.name}
       tagline={form.subtitle || "We'd love to hear from you! 🍽️"}
       coverImage={form.coverImageUrl}
