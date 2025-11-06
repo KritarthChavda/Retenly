@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
+import { Footer } from '@/components/dashboard/Footer'
 import { DashboardProvider, FeedbackWindow } from '@/context/DashboardContext'
 
 interface Restaurant {
@@ -192,12 +193,13 @@ export default function DashboardLayout({
 
   return (
     <DashboardProvider value={contextValue}>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <Header
           restaurantName={restaurant.name}
           restaurantLogo={restaurant.logoUrl}
         />
-        {children}
+        <main className="flex-grow">{children}</main>
+        <Footer />
       </div>
     </DashboardProvider>
   )
