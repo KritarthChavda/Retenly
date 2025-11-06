@@ -186,7 +186,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
                    bg-background/50 backdrop-blur-md
                    supports-[backdrop-filter:blur(0)]:bg-background/60
                    text-foreground transition-all duration-200">
-      <div className="container flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
+      <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
         {/* Logo & Brand */}
         <div className="flex items-center gap-4 sm:gap-6">
           <div className="flex items-center gap-2 sm:gap-3">
@@ -204,7 +204,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
         </div>
 
         {/* Restaurant Info & Actions */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 ml-auto">
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative hover:bg-gradient-card border border-transparent hover:border-glass">
             <Bell className="h-5 w-5" />
