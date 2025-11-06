@@ -223,7 +223,7 @@ export const SentimentChart = ({ data }: SentimentChartProps) => {
     plugins: {
       legend: {
         position: 'bottom',
-        onClick: null,
+        onClick: undefined,
         labels: {
           color: '#e5e7eb',
           padding: 20,
