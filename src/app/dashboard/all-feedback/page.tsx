@@ -242,11 +242,6 @@ export default function AllFeedback() {
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <span className="text-primary font-semibold">
-                            {feedback.customerName.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
                         <div>
                           <h3 className="font-semibold text-foreground">{feedback.customerName}</h3>
                         </div>

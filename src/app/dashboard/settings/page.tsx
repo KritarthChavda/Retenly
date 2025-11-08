@@ -71,9 +71,6 @@ export default function Settings() {
       <main className="container mx-auto px-6 py-8 space-y-8">
         {/* Header Section */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold bg-brand-gradient bg-clip-text text-transparent">
-            Settings
-          </h1>
           <p className="text-muted-foreground">
             Manage your restaurant profile and preferences
           </p>
