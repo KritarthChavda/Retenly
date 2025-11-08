@@ -132,9 +132,6 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-brand-gradient flex items-center justify-center text-white text-xs font-semibold">
-                        {item.customerName.charAt(0)}
-                      </div>
                       <span className="font-medium">{item.customerName}</span>
                     </div>
                   </td>

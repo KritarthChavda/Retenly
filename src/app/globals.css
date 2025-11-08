@@ -38,7 +38,7 @@ All colors MUST be HSL.
     --radius: 0.75rem;
 
     /* Custom dashboard colors */
-    --brand-gradient: linear-gradient(135deg, #fbbf24 0%, #f59e0b 25%, #ec4899 75%, #8b5cf6 100%);
+    --brand-gradient: linear-gradient(135deg, #8b5cf6 100%);
     --success: 142 76% 36%;
     --success-foreground: 210 40% 98%;
     --warning: 43 96% 56%;
