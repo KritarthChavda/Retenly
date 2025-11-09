@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     // Try to send credentials via email
     let emailSent = false
     try {
-      await sendRestaurantCredentials(email, credentials.username, credentials.password, name)
+      await sendRestaurantCredentials(name, email, credentials.username, credentials.password)
       emailSent = true
     } catch (emailError) {
       console.warn('Failed to send email, but restaurant was created:', emailError)
