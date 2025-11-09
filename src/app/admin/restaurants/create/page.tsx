@@ -34,7 +34,7 @@ export default function CreateRestaurant() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           name: restaurantName,
           email: restaurantEmail
         }),
@@ -42,7 +42,10 @@ export default function CreateRestaurant() {
 
       if (response.ok) {
         const data = await response.json()
-        setCredentials(data.credentials)
+        setCredentials({
+          ...data.credentials,
+          emailSent: data.emailSent, // ✅ pass the flag along
+        })
       } else {
         const data = await response.json()
         setError(data.error || 'Failed to create restaurant')
@@ -83,7 +86,7 @@ export default function CreateRestaurant() {
             <h2 className="text-xl font-semibold text-white mb-6">
               Create New Restaurant
             </h2>
-            
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="restaurantName" className="block text-sm font-medium text-gray-300 mb-2">
