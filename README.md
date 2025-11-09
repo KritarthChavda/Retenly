@@ -193,10 +193,6 @@ Submits new feedback to the database.
 3. Make your changes
 4. Submit a pull request
 
-## License
-
-MIT License - feel free to use this project for your restaurant!
-
 ---
 
 Built with ❤️ for better restaurant experiences
