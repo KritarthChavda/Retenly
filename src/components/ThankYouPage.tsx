@@ -65,7 +65,7 @@ export default function ThankYouPage({
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 px-4 pt-8 relative overflow-visible">
+    <div className="min-h-screen bg-slate-900 px-4 pt-8 relative overflow-visible" data-testid="thank-you-screen">
       {/* Keep mounted; Confetti fades out internally (no flicker) */}
       <Confetti />
 

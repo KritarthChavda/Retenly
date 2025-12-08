@@ -82,6 +82,15 @@ self.addEventListener('sync', (event) => {
   }
 })
 
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+
+  if (event.data.type === 'DEBUG_PROCESS_PENDING') {
+    console.log('[SW] DEBUG_PROCESS_PENDING received');
+    event.waitUntil(processPendingFeedback());
+  }
+});
+
 async function processSingleFeedback(item) {
   const { id, slug, formData, audioBlob } = item
   console.log('[SW] Processing feedback id:', id, 'slug:', slug)

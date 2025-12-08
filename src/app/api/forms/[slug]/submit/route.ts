@@ -141,6 +141,8 @@ export async function POST(
       rating
     })
 
+    console.log('Feedback submitted successfully:', { feedbackId: feedback.id, phoneNumber: feedback.phoneNumber })
+
     return NextResponse.json({
       success: true,
       feedbackId: feedback.id,

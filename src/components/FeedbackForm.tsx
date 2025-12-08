@@ -155,60 +155,59 @@ export default function FeedbackForm({
     console.log('[Form] Submission data:', submissionData)
 
     try {
-      let usedBackgroundSync = false
+  let usedBackgroundSync = false
 
-      if ('serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.ready
-          const hasSync = 'sync' in registration
-          console.log('[Form] SW ready. Background Sync supported:', hasSync)
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const hasSync = 'sync' in registration
+      console.log('[Form] SW ready. Background Sync supported:', hasSync)
 
-          if (hasSync) {
-            console.log('[Form] Using Background Sync flow')
-            const id = new Date().toISOString()
-            await addFeedback(id, restaurantSlug, submissionData, audioBlob)
+      if (hasSync) {
+        console.log('[Form] Using Background Sync flow')
+        const id = new Date().toISOString()
+        await addFeedback(id, restaurantSlug, submissionData, audioBlob)
 
-            await registration.sync.register('submit-feedback')
-            usedBackgroundSync = true
+        await registration.sync.register('submit-feedback')
+        usedBackgroundSync = true
+        // expose this for tests:
+        ;(window as any).__feedbackLastSubmitMode = 'background-sync'
 
-            // We consider it "submitted" from the user's POV
-            onSubmit(submissionData)
-            toast({
-              title: 'Feedback queued',
-              description: 'We’ll send your feedback in the background.',
-            })
-            setIsSubmitting(false)
-            return
-          }
-        } catch (err) {
-          console.warn('[Form] SW / Background Sync failed, falling back:', err)
-        }
+        onSubmit(submissionData)
+        setIsSubmitting(false)
+        return
       }
+    } catch (err) {
+      console.warn('[Form] SW / Background Sync failed, falling back:', err)
+    }
+  }
 
-      console.log('[Form] Using direct fallback flow (no Background Sync)')
+  // Fallback path (direct POST)
+  console.log('[Form] Using direct fallback flow')
+  ;(window as any).__feedbackLastSubmitMode = 'fallback'
 
-      // Fallback: normal HTTP submission
-      const response = await fetch(`/api/forms/${restaurantSlug}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: submissionData }),
-      })
+  const response = await fetch(`/api/forms/${restaurantSlug}/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answers: submissionData }),
+  })
 
-      if (!response.ok) throw new Error('Submission failed')
+  if (!response.ok) throw new Error('Submission failed')
 
-      const result = await response.json()
-      const feedbackId = result.feedbackId
-      onSubmit(submissionData)
+  const result = await response.json()
+  const feedbackId = result.feedbackId
+
+  onSubmit(submissionData)
 
       // Upload voice recording in the background (no need to block UX)
-      if (audioBlob && feedbackId) {
-        const uploadFormData = new FormData()
-        uploadFormData.append('file', audioBlob, 'voice-recording.webm')
-        uploadFormData.append('feedbackId', feedbackId)
+  if (audioBlob && feedbackId) {
+    const uploadFormData = new FormData()
+    uploadFormData.append('file', audioBlob, 'voice-recording.webm')
+    uploadFormData.append('feedbackId', feedbackId)
 
-        fetch('/api/voice-upload', {
-          method: 'POST',
-          body: uploadFormData,
+    fetch('/api/voice-upload', {
+      method: 'POST',
+      body: uploadFormData,
         })
           .then(uploadResponse => {
             if (uploadResponse.ok) {
@@ -230,19 +229,19 @@ export default function FeedbackForm({
               variant: 'destructive',
             })
           })
-      }
-
-      setIsSubmitting(false)
-    } catch (error) {
-      console.error('[Form] Submission error:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to submit feedback.',
-        variant: 'destructive',
-      })
-      setIsSubmitting(false)
-    }
   }
+
+  setIsSubmitting(false)
+} catch (error) {
+  console.error('[Form] Submission error:', error)
+  toast({
+    title: 'Error',
+    description: 'Failed to submit feedback.',
+    variant: 'destructive',
+  })
+  setIsSubmitting(false)
+    }
+}
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -301,6 +300,7 @@ export default function FeedbackForm({
                     id="name"
                     type="text"
                     placeholder="Enter your name"
+                    data-testid="input-name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     className={`w-full bg-slate-700/50 border-slate-500 focus:ring-purple-500 ${
@@ -323,6 +323,7 @@ export default function FeedbackForm({
                     id="phoneNumber"
                     type="tel"
                     placeholder="Your phone number"
+                    data-testid="input-phone"
                     value={formData.phoneNumber}
                     onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
                     className={`w-full bg-slate-700/50 border-slate-500 focus:ring-purple-500 ${
@@ -349,6 +350,7 @@ export default function FeedbackForm({
                       key={rating.value}
                       type="button"
                       onClick={() => handleInputChange("experience", rating.value)}
+                       data-testid={`input-experience-${rating.value}`}
                       className={`transition-all duration-300 ease-out cursor-pointer select-none text-4xl sm:text-5xl p-2 rounded-lg ${
                         formData.experience === rating.value 
                           ? "filter-none brightness-100 scale-125" 
@@ -383,6 +385,7 @@ export default function FeedbackForm({
                 variant="outline"
                 size="lg"
                 onClick={handleVoiceRecording}
+                data-testid="voice-recording-button"
                 className={`rounded-full w-16 h-16 p-0 border-2 transition-all duration-300 ${
                   isRecording 
                     ? "border-yellow-400 shadow-lg shadow-yellow-400/25" 
@@ -409,6 +412,7 @@ export default function FeedbackForm({
                 <Textarea
                   id="feedback"
                   placeholder="Don't hold back — your words matter! Tell us what made your visit special or how we can improve."
+                  data-testid="input-feedback"
                   value={formData.feedback}
                   onChange={(e) => handleInputChange("feedback", e.target.value)}
                   className={`min-h-32 bg-slate-700/50 focus:ring-purple-500 resize-none ${
@@ -425,6 +429,7 @@ export default function FeedbackForm({
               type="submit"
               size="lg"
               disabled={isSubmitting}
+              data-testid="feedback-submit-button"
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-all duration-300 text-white font-semibold py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
             >
               {isSubmitting ? (
