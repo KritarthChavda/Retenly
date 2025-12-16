@@ -38,7 +38,7 @@
     "libphonenumber-js": "^1.12.25",
     "lucide-react": "^0.539.0",
     "multer": "^2.0.2",
-    "next": "15.4.5",
+    "next": "15.4.10",
     "node-cron": "^4.2.1",
     "nodemailer": "^6.9.8",
     "openai": "^6.3.0",
