@@ -36,11 +36,22 @@ export async function POST(request: NextRequest) {
       .from(process.env.SUPABASE_VOICE_RECORDINGS_BUCKET!)
       .getPublicUrl(filePath)
 
-    // Update the feedback record with the voice recording URL
-    await prisma.feedback.update({
-      where: { id: feedbackId },
-      data: { voiceRecordingUrl: publicUrl },
-    });
+    const feedbackRecord = await prisma.feedback.findUnique({ where: { id: feedbackId } })
+    if (feedbackRecord) {
+      await prisma.feedback.update({
+        where: { id: feedbackId },
+        data: { voiceRecordingUrl: publicUrl },
+      })
+    } else {
+      const demoRecord = await prisma.demoFeedback.findUnique({ where: { id: feedbackId } })
+      if (!demoRecord) {
+        return NextResponse.json({ error: 'Feedback not found' }, { status: 404 })
+      }
+      await prisma.demoFeedback.update({
+        where: { id: feedbackId },
+        data: { voiceRecordingUrl: publicUrl },
+      })
+    }
 
     return NextResponse.json({ url: publicUrl }, { status: 200 })
   } catch (err) {

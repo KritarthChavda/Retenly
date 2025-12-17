@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import RestaurantDashboard from '@/app/dashboard/page'
 import { DashboardProvider, FeedbackWindow } from '@/context/DashboardContext'
 import { Header } from '@/components/dashboard/Header'
@@ -37,14 +37,29 @@ type DemoHighlight = {
   type: 'positive' | 'negative'
 }
 
-type DemoFeedback = {
+type DemoDashboardFeedback = {
   id: string
   date: string
   customerName: string
   rating: number
   feedback: string
   sentiment: 'positive' | 'neutral' | 'negative'
+  voiceRecordingUrl?: string | null
 }
+
+type DemoFeedbackRecord = {
+  id: string
+  name: string
+  phoneNumber: string | null
+  experience: string | null
+  sentiment: string | null
+  rating: number | null
+  feedback: string | null
+  createdAt: string
+  voiceRecordingUrl: string | null
+}
+
+const DEMO_RECENT_THRESHOLD = 5
 
 const analyticsByWindow: Record<FeedbackWindow, DemoAnalytics> = {
   '7d': {
@@ -175,7 +190,7 @@ const topHighlightsByWindow: Record<FeedbackWindow, DemoHighlight[]> = {
   ],
 }
 
-const recentFeedbackByWindow: Record<FeedbackWindow, DemoFeedback[]> = {
+const fallbackRecentFeedback: Record<FeedbackWindow, DemoDashboardFeedback[]> = {
   '7d': [
     {
       id: 'f-01',
@@ -285,17 +300,100 @@ const mockForms = [
   { id: 'form-2', title: 'Delivery Feedback', feedbackCount: 58, responseCount: 58 },
 ]
 
-const allFeedback = [
-  ...recentFeedbackByWindow['90d'],
-  ...recentFeedbackByWindow['30d'],
-  ...recentFeedbackByWindow['7d'],
+const fallbackAllFeedback = [
+  ...fallbackRecentFeedback['90d'],
+  ...fallbackRecentFeedback['30d'],
+  ...fallbackRecentFeedback['7d'],
 ]
+
+const normalizeSentiment = (
+  sentiment?: string | null
+): 'positive' | 'neutral' | 'negative' => {
+  if (sentiment === 'positive' || sentiment === 'negative' || sentiment === 'neutral') {
+    return sentiment
+  }
+  return 'neutral'
+}
+
+function mergeWithFallback(
+  primary: DemoDashboardFeedback[],
+  fallback: DemoDashboardFeedback[],
+  minimum: number
+): DemoDashboardFeedback[] {
+  if (primary.length >= minimum) {
+    return primary
+  }
+
+  const needed = minimum - primary.length
+  const extras: DemoDashboardFeedback[] = []
+  const seen = new Set(primary.map((item) => item.id))
+
+  for (const item of fallback) {
+    if (seen.has(item.id)) continue
+    extras.push(item)
+    seen.add(item.id)
+    if (extras.length >= needed) break
+  }
+
+  return [...primary, ...extras]
+}
 
 const noopSetRestaurant = () => undefined
 
 export default function DemoRestaurantDashboard() {
   const [feedbackWindow, setFeedbackWindow] = useState<FeedbackWindow>('30d')
+  const [demoFeedbackRecords, setDemoFeedbackRecords] = useState<DemoFeedbackRecord[]>([])
+  const [isDemoLoading, setIsDemoLoading] = useState(false)
+
   const updateFeedbackWindow = useCallback((window: FeedbackWindow) => setFeedbackWindow(window), [])
+
+  const fetchDemoFeedbacks = useCallback(async () => {
+    try {
+      setIsDemoLoading(true)
+      const response = await fetch('/api/demo-feedback?limit=50')
+      if (response.ok) {
+        const payload = await response.json()
+        setDemoFeedbackRecords(payload.feedbacks ?? [])
+      } else {
+        console.error('Failed to fetch demo feedback data', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching demo feedback data', error)
+    } finally {
+      setIsDemoLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchDemoFeedbacks()
+  }, [fetchDemoFeedbacks])
+
+  const liveDemoFeedback = useMemo<DemoDashboardFeedback[]>(() => {
+    return demoFeedbackRecords.map((record) => ({
+      id: record.id,
+      date: record.createdAt,
+      customerName: record.name || 'Guest',
+      rating: record.rating ?? 3,
+      feedback: record.feedback || 'No text feedback',
+      sentiment: normalizeSentiment(record.sentiment),
+      voiceRecordingUrl: record.voiceRecordingUrl,
+    }))
+  }, [demoFeedbackRecords])
+
+  const recentFeedbacksForWindow = useCallback(
+    (window: FeedbackWindow) =>
+      mergeWithFallback(
+        liveDemoFeedback,
+        fallbackRecentFeedback[window] || [],
+        DEMO_RECENT_THRESHOLD
+      ),
+    [liveDemoFeedback]
+  )
+
+  const combinedAllFeedback = useMemo(() => {
+    const minimum = Math.max(DEMO_RECENT_THRESHOLD, liveDemoFeedback.length || DEMO_RECENT_THRESHOLD)
+    return mergeWithFallback(liveDemoFeedback, fallbackAllFeedback, minimum)
+  }, [liveDemoFeedback])
 
   const dashboardValue = useMemo(() => {
     return {
@@ -303,14 +401,20 @@ export default function DemoRestaurantDashboard() {
       setRestaurant: noopSetRestaurant,
       analytics: analyticsByWindow[feedbackWindow],
       topHighlights: topHighlightsByWindow[feedbackWindow],
-      recentFeedbacks: recentFeedbackByWindow[feedbackWindow],
+      recentFeedbacks: recentFeedbacksForWindow(feedbackWindow),
       forms: mockForms,
-      allFeedback,
+      allFeedback: combinedAllFeedback,
       feedbackWindow,
       setFeedbackWindow: updateFeedbackWindow,
-      isHighlightsLoading: false,
+      isHighlightsLoading: isDemoLoading,
     }
-  }, [feedbackWindow, updateFeedbackWindow])
+  }, [
+    combinedAllFeedback,
+    feedbackWindow,
+    isDemoLoading,
+    recentFeedbacksForWindow,
+    updateFeedbackWindow,
+  ])
 
   return (
     <DashboardProvider value={dashboardValue}>

@@ -39,7 +39,7 @@ export function DefaultFeedbackExperience({
       ) : (
         <FeedbackForm
           onSubmit={handleSubmit}
-          restaurantSlug="downtown-rajkot"
+          restaurantSlug="demo"
           restaurantName={restaurantName}
           tagline="Spill the beans — we're all ears! 🍽️"
           isDefault={true}
