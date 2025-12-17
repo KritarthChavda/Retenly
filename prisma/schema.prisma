@@ -95,6 +95,20 @@ model Feedback {
   @@map("feedbacks")
 }
 
+model DemoFeedback {
+  id           String   @id @default(cuid())
+  name         String
+  phoneNumber  String?
+  experience   String?
+  sentiment    String   @default("neutral")
+  rating       Int?     @default(3)
+  feedback     String?
+  voiceRecordingUrl String?
+  createdAt    DateTime @default(now())
+
+  @@map("demo_feedbacks")
+}
+
 model Response {
   id        String   @id @default(cuid())
   formId    String
