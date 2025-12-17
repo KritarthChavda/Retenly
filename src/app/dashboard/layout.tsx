@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Header } from '@/components/dashboard/Header'
 import { Footer } from '@/components/dashboard/Footer'
 import { DashboardProvider, FeedbackWindow } from '@/context/DashboardContext'
@@ -74,6 +74,7 @@ export default function DashboardLayout({
   const [isHighlightsLoading, setIsHighlightsLoading] = useState(false)
   const [error, setError] = useState('')
   const [feedbackWindow, setFeedbackWindowState] = useState<FeedbackWindow>('30d')
+  const latestRequestIdRef = useRef(0)
 
   useEffect(() => {
     fetchDashboardData(feedbackWindow, { showFullLoader: true })
@@ -83,6 +84,7 @@ export default function DashboardLayout({
     windowParam: FeedbackWindow,
     { showFullLoader = false }: { showFullLoader?: boolean } = {}
   ) => {
+    const requestId = ++latestRequestIdRef.current
     try {
       if (showFullLoader) {
         setIsLoading(true)
@@ -96,6 +98,9 @@ export default function DashboardLayout({
       )
       if (response.ok) {
         const data = await response.json()
+        if (requestId !== latestRequestIdRef.current) {
+          return
+        }
         setRestaurant(data.restaurant)
         setAnalytics(data.analytics)
         setError('')
@@ -134,16 +139,22 @@ export default function DashboardLayout({
         setAllFeedback(transformedFeedback);
       } else {
         console.error('Failed to fetch dashboard data for layout:', response.status)
-        setError('Failed to load dashboard data')
+        if (requestId === latestRequestIdRef.current) {
+          setError('Failed to load dashboard data')
+        }
       }
     } catch (error) {
-      console.error('Error fetching data for layout:', error)
-      setError('An error occurred while loading data')
-    } finally {
-      if (showFullLoader) {
-        setIsLoading(false)
+      if (requestId === latestRequestIdRef.current) {
+        console.error('Error fetching data for layout:', error)
+        setError('An error occurred while loading data')
       }
-      setIsHighlightsLoading(false)
+    } finally {
+      if (requestId === latestRequestIdRef.current) {
+        if (showFullLoader) {
+          setIsLoading(false)
+        }
+        setIsHighlightsLoading(false)
+      }
     }
   }
 

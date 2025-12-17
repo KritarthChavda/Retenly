@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   Chart as ChartJS,
   ArcElement,
@@ -20,7 +20,7 @@ ChartJS.register(ArcElement, Tooltip, Legend)
 
 // --- Center text plugin (typed, no TS augmentation needed) ---
 function centerTextPlugin(opts: {
-  value: number | string
+  value?: number | string
   label?: string
   valueColor?: string
   labelColor?: string
@@ -36,6 +36,14 @@ function centerTextPlugin(opts: {
       const meta = chart.getDatasetMeta(0)
       if (!meta?.data?.length) return
 
+      const dataset = chart.data.datasets?.[0]
+      const rawData = Array.isArray(dataset?.data) ? dataset?.data : []
+      const calculatedTotal = rawData.reduce<number>((sum, item) => {
+        const numericValue = typeof item === 'number' ? item : Number(item)
+        return sum + (isNaN(numericValue) ? 0 : numericValue)
+      }, 0)
+      const valueToRender = opts.value ?? calculatedTotal
+
       // All arcs share the same center
       // @ts-ignore ArcElement provides x/y
       const { x, y } = meta.data[0]
@@ -47,7 +55,7 @@ function centerTextPlugin(opts: {
       ctx.font = `600 ${opts.valueFontSize ?? 24}px ${opts.fontFamily ?? 'Inter, system-ui, sans-serif'}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(String(opts.value ?? ''), x, y - (opts.offsetY ?? 6))
+      ctx.fillText(String(valueToRender ?? ''), x, y - (opts.offsetY ?? 6))
 
       // label
       if (opts.label) {
@@ -70,13 +78,18 @@ interface SentimentData {
 
 interface SentimentChartProps {
   data: SentimentData[]
+  centerLabel?: string
+  totalValue?: number
 }
 
-export const SentimentChart = ({ data }: SentimentChartProps) => {
-  const total = data.reduce((sum, item) => sum + item.value, 0)
+export const SentimentChart = ({ data, centerLabel = 'Total', totalValue }: SentimentChartProps) => {
+  const derivedTotal = data.reduce((sum, item) => sum + item.value, 0)
+  const total = typeof totalValue === 'number' ? totalValue : derivedTotal
 
   const chartWrapperRef = useRef<HTMLDivElement | null>(null)
   const tooltipElRef = useRef<HTMLDivElement | null>(null)
+
+  const centerPlugin = useMemo(() => centerTextPlugin({ value: total, label: centerLabel }), [centerLabel, total])
 
   // Create/attach the custom tooltip element once per chart
   const ensureTooltipElement = (chart: DoughnutChartInstance) => {
@@ -254,7 +267,8 @@ export const SentimentChart = ({ data }: SentimentChartProps) => {
           <Doughnut
             data={chartData}
             options={options}
-            plugins={[centerTextPlugin({ value: total, label: 'Total' })]}
+            plugins={[centerPlugin]}
+            redraw
           />
         </div>
       ) : (
