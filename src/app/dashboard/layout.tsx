@@ -116,7 +116,8 @@ export default function DashboardLayout({
           feedback: f.feedback || 'No text feedback',
           rating: f.rating || 3,
           sentiment: (f.sentiment || 'neutral').toLowerCase(),
-          tags: []
+          tags: [],
+          voiceRecordingUrl: f.voiceRecordingUrl,
         }))
         setRecentFeedbacks(recent)
         setForms(data.forms || [])

@@ -72,7 +72,8 @@ export default function RestaurantDashboard() {
     customerName: feedback.customerName,
     rating: feedback.rating || 3,
     feedback: feedback.feedback,
-    sentiment: feedback.sentiment || "neutral"
+    sentiment: feedback.sentiment || "neutral",
+    voiceRecordingUrl: feedback.voiceRecordingUrl,
   }))
 
   return (

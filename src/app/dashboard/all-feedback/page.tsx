@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from "react";
-import { Search, Download, Eye, Star, ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
+import { useState } from "react";
+import { Search, Download, Eye, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDashboard } from "@/context/DashboardContext";
+import { VoiceRecordingPlayer } from "@/components/dashboard/VoiceRecordingPlayer";
 
 const getSentimentColor = (sentiment: string) => {
   switch (sentiment) {
@@ -44,12 +45,6 @@ export default function AllFeedback() {
   const [ratingFilter, setRatingFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
-  
-  // Audio player states
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
   
   const itemsPerPage = 8;
 
@@ -106,52 +101,6 @@ export default function AllFeedback() {
       document.body.removeChild(link);
     }
   };
-
-  // Audio player functions
-  const togglePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
-  };
-
-  const handleEnded = () => {
-    setIsPlaying(false);
-    setCurrentTime(0);
-  };
-
-  const formatTime = (time: number) => {
-    if (isNaN(time)) return "0:00";
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  // Reset audio when switching feedback
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      setIsPlaying(false);
-      setCurrentTime(0);
-    }
-  }, [selectedFeedback]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -288,28 +237,7 @@ export default function AllFeedback() {
                             <p className="text-sm text-muted-foreground mb-1.5">
                               <strong>Voice Recording:</strong>
                             </p>
-                            <div className="flex items-center gap-2">
-                              <audio
-                                ref={audioRef}
-                                src={feedback.voiceRecordingUrl}
-                                onTimeUpdate={handleTimeUpdate}
-                                onLoadedMetadata={handleLoadedMetadata}
-                                onEnded={handleEnded}
-                                preload="metadata"
-                                style={{ display: 'none' }}
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={togglePlayPause}
-                                className="h-8 w-8 p-0"
-                              >
-                                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                              </Button>
-                              <span className="text-xs text-muted-foreground">
-                                {formatTime(currentTime)} / {formatTime(duration)}
-                              </span>
-                            </div>
+                            <VoiceRecordingPlayer src={feedback.voiceRecordingUrl} />
                           </div>
                         )}
                       </div>
