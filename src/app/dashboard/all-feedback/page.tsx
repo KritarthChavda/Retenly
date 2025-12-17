@@ -204,7 +204,17 @@ export default function AllFeedback() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-foreground mb-3 line-clamp-2">{feedback.feedback}</p>
+                    <div className="space-y-3">
+                      {feedback.feedback && feedback.feedback !== 'No text feedback' && (
+                        <p className="text-foreground line-clamp-2">{feedback.feedback}</p>
+                      )}
+                      {(feedback.feedback === 'No text feedback' || !feedback.feedback) && !feedback.voiceRecordingUrl && (
+                        <p className="text-sm text-muted-foreground italic">No text feedback</p>
+                      )}
+                      {feedback.voiceRecordingUrl && (
+                        <VoiceRecordingPlayer src={feedback.voiceRecordingUrl} />
+                      )}
+                    </div>
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <span>{new Date(feedback.date).toLocaleDateString()}</span>
                       <Button
