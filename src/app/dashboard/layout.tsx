@@ -112,7 +112,13 @@ export default function DashboardLayout({
           confidence: item.confidence ?? 0.6,
           type: item.type === 'negative' ? 'negative' : 'positive'
         }))
-        setTopHighlights(topHighlights)
+        setTopHighlights(() => {
+          const map = new Map<string, FeedbackHighlight>()
+          for (const h of topHighlights) {
+            map.set(h.id, h)
+          }
+          return Array.from(map.values())
+        })
         const recent = (data.recentFeedbacks || []).map((f: any) => ({
           id: f.id,
           date: f.createdAt,
@@ -121,7 +127,8 @@ export default function DashboardLayout({
           feedback: f.feedback || 'No text feedback',
           rating: f.rating || 3,
           sentiment: (f.sentiment || 'neutral').toLowerCase(),
-          tags: []
+          tags: [],
+          voiceRecordingUrl: f.voiceRecordingUrl,
         }))
         setRecentFeedbacks(recent)
         setForms(data.forms || [])
@@ -160,7 +167,9 @@ export default function DashboardLayout({
 
   const handleWindowChange = (windowParam: FeedbackWindow) => {
     setFeedbackWindowState(windowParam)
+    const currentWindow = windowParam
     fetchDashboardData(windowParam)
+    if (currentWindow !== feedbackWindow) return
   }
 
   if (isLoading) {
