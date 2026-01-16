@@ -16,7 +16,7 @@ export function VoiceRecordingPlayer({ src, className }: VoiceRecordingPlayerPro
   const audioCtxRef = useRef<BrowserAudioContext | null>(null)
   const bufferRef = useRef<AudioBuffer | null>(null)
   const sourceRef = useRef<AudioBufferSourceNode | null>(null)
-  const rafRef = useRef<number>()
+  const rafRef = useRef<number | null>(null)
   const startTimeRef = useRef(0)
   const offsetRef = useRef(0)
 
@@ -29,7 +29,7 @@ export function VoiceRecordingPlayer({ src, className }: VoiceRecordingPlayerPro
   const stopProgressLoop = () => {
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current)
-      rafRef.current = undefined
+      rafRef.current = null
     }
   }
 
