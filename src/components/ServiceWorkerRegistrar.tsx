@@ -4,31 +4,41 @@ import { useEffect } from 'react'
 
 export default function ServiceWorkerRegistrar() {
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      const registerServiceWorker = () => {
-        navigator.serviceWorker.register('/sw.js').then(registration => {
-          console.log('Service Worker registered with scope:', registration.scope);
-          registration.update();
-        }).catch(error => {
-          console.error('Service Worker registration failed:', error);
-        });
-      };
-
-      window.addEventListener('load', registerServiceWorker);
-
-      const handleControllerChange = () => {
-        if (document.body.dataset.reloading) return;
-        document.body.dataset.reloading = 'true';
-        window.location.reload();
-      };
-
-      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-
-      return () => {
-        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-      };
+    if (!('serviceWorker' in navigator)) {
+      console.log('[SW] Service workers not supported in this browser')
+      return
     }
-  }, []);
 
-  return null;
+    const registerServiceWorker = () => {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then(registration => {
+          console.log('[SW] Registered with scope:', registration.scope)
+          registration.update().catch(err => {
+            console.warn('[SW] registration.update() failed:', err)
+          })
+        })
+        .catch(error => {
+          console.error('[SW] Registration failed:', error)
+        })
+    }
+
+    // Register once immediately after hydration
+    registerServiceWorker()
+
+    const handleControllerChange = () => {
+      if (document.body.dataset.reloading) return
+      document.body.dataset.reloading = 'true'
+      console.log('[SW] controllerchange → reloading page')
+      window.location.reload()
+    }
+
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange)
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange)
+    }
+  }, [])
+
+  return null
 }

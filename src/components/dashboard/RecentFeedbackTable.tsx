@@ -4,8 +4,7 @@ import { useMemo, useState } from 'react'
 import { Search, Star, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { date } from 'zod/v4'
+import { VoiceRecordingPlayer } from '@/components/dashboard/VoiceRecordingPlayer'
 
 interface FeedbackItem {
   id: string;
@@ -14,6 +13,7 @@ interface FeedbackItem {
   rating: number;
   feedback: string;
   sentiment: "positive" | "negative" | "neutral";
+  voiceRecordingUrl?: string;
 }
 
 interface RecentFeedbackTableProps {
@@ -24,6 +24,12 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  const isPlaceholderFeedback = (text?: string) => {
+    if (!text) return true
+    const normalized = text.trim().toLowerCase()
+    return normalized === '' || normalized === 'no text feedback' || normalized === 'no text feedback provided'
+  }
 
   // Filter data based on search term
   const filteredData = data.filter(item => {
@@ -142,9 +148,17 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
                     {getSentimentBadge(item.sentiment)}
                   </td>
                   <td className="p-4 max-w-xs">
-                    <p className="text-sm text-muted-foreground truncate">
-                      {item.feedback}
-                    </p>
+                    {isPlaceholderFeedback(item.feedback) ? (
+                      item.voiceRecordingUrl ? (
+                        <VoiceRecordingPlayer src={item.voiceRecordingUrl} className="justify-start" />
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">No text feedback</p>
+                      )
+                    ) : (
+                      <p className="text-sm text-muted-foreground truncate">
+                        {item.feedback}
+                      </p>
+                    )}
                   </td>
                   <td className="p-4 text-right">
                     <Button
