@@ -21,14 +21,23 @@ export async function middleware(request: NextRequest) {
 
   // Public routes that don't require authentication
   const publicRoutes = [
-    '/',
-    '/forms',
-    '/api/feedback',
-    '/api/forms',
-    '/api/upload',
-    '/admin/login',
-    '/restaurant/login'
-  ]
+  '/',
+  '/forms',
+
+  // Public APIs
+  '/api/feedback',
+  '/api/forms',
+  '/api/upload',
+
+  // Auth pages
+  '/admin/login',
+  '/restaurant/login',
+
+  // Auth APIs (THIS IS THE FIX)
+  '/api/admin/login',
+  '/api/restaurant/login'
+]
+
 
   // Admin routes that require admin authentication
   const adminRoutes = ['/admin', '/api/admin']
