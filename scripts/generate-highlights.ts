@@ -5,16 +5,10 @@
 import "dotenv/config"
 import cron from "node-cron"
 import { prisma } from "../src/lib/prisma"
-import { generateWindowHighlights } from "../src/lib/ai/topFeedback" // export default as above
+import { generateAllWindowsForAllRestaurants } from "../src/lib/ai/topFeedback"
 
 async function runOnce() {
-  const restaurants = await prisma.restaurant.findMany({ select: { id: true, name: true } })
-  for (const r of restaurants) {
-    for (const w of ["7d","30d","90d"] as const) {
-      console.log(`Generating ${w} highlights for ${r.name}`)
-      await generateWindowHighlights(r.id, w)
-    }
-  }
+  await generateAllWindowsForAllRestaurants()
 }
 
 if (process.env.RUN_ONCE === "1") {
