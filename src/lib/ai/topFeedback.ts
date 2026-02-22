@@ -3,12 +3,11 @@ import { Groq } from "groq-sdk"
 import { AI_CURATOR_SYSTEM_PROMPT, AI_CURATOR_USER_PROMPT } from "./prompts"
 import { preprocess } from "./preprocess"
 import { prisma } from "../prisma"
-import { Prisma } from "@prisma/client"
 import { HighlightWindow } from "@/generated/prisma"
 
-export type WindowKey = "7d" | "30d" | "90d"
+import type { WindowKey } from "./types"
 
-const DEFAULT_MODEL = "llama-3.3-70b-versatile" // Groq
+const DEFAULT_MODEL = "llama-3.3-70b-versatile"
 const DEFAULT_TEMP = 0.2
 
 const WINDOW_ENUM: Record<WindowKey, HighlightWindow> = {
@@ -39,14 +38,81 @@ export interface CuratedFeedbackResult {
   generatedAt: string
 }
 
+// ─── Deduplication ────────────────────────────────────────────────────────────
+
+/**
+ * Jaccard similarity between two strings (word-level sets).
+ */
+function similarity(a: string, b: string): number {
+  const setA = new Set(a.toLowerCase().split(/\s+/))
+  const setB = new Set(b.toLowerCase().split(/\s+/))
+  const intersection = [...setA].filter(x => setB.has(x)).length
+  const union = new Set([...setA, ...setB]).size
+  return union === 0 ? 0 : intersection / union
+}
+
+/**
+ * Cross-list deduplication: removes items whose summary OR themes are too
+ * similar to anything already accepted in `result`.
+ * Uses a higher threshold (0.55) than before so "wait time" and "slow service"
+ * collapse into one theme instead of generating two near-identical cards.
+ */
+function dedupeThemes(items: CuratedFeedbackItem[]): CuratedFeedbackItem[] {
+  const SUMMARY_THRESHOLD = 0.55   // was 0.75 — catches more near-duplicates
+  const THEME_OVERLAP_THRESHOLD = 0.6
+
+  const result: CuratedFeedbackItem[] = []
+  const seenSummaries = new Set<string>()
+
+  for (const item of items) {
+    const normalizedSummary = item.summary
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .trim()
+
+    // exact duplicate guard
+    if (seenSummaries.has(normalizedSummary)) continue
+    seenSummaries.add(normalizedSummary)
+
+    // fuzzy summary duplicate guard
+    const summaryTooClose = result.some(
+      existing => similarity(existing.summary, item.summary) > SUMMARY_THRESHOLD
+    )
+    if (summaryTooClose) continue
+
+    // theme-overlap guard — catches cases like ["wait time","service"] vs ["slow service","wait"]
+    const themesTooClose = result.some(existing => {
+      const existingThemes = new Set(existing.themes.map(t => t.toLowerCase()))
+      const newThemes = item.themes.map(t => t.toLowerCase())
+      const overlap = newThemes.filter(t => existingThemes.has(t)).length
+      const union = new Set([...existingThemes, ...newThemes]).size
+      return union > 0 && overlap / union > THEME_OVERLAP_THRESHOLD
+    })
+    if (themesTooClose) continue
+
+    result.push(item)
+  }
+
+  return result
+}
+
+// ─── Generic Summary Blocker ──────────────────────────────────────────────────
+
+function isGenericSummary(s: string): boolean {
+  return /good food|good experience|serve good|maintain|customers are happy|keep it up|well done/i.test(s)
+}
+
+// ─── Main Curation Function ───────────────────────────────────────────────────
+
 export async function curateTopFeedback(
   feedbacks: FeedbackRecord[],
   {
     model = DEFAULT_MODEL,
-    temperature = DEFAULT_TEMP
-  }: { model?: string; temperature?: number } = {}
+    temperature = DEFAULT_TEMP,
+    windowKey
+  }: { model?: string; temperature?: number; windowKey?: WindowKey } = {}
 ): Promise<CuratedFeedbackResult> {
-  // strict sentiment gate, noise filter, PII strip, light lexicon normalize
+
   const cleaned = preprocess(
     feedbacks.map(f => ({
       id: f.id,
@@ -57,27 +123,16 @@ export async function curateTopFeedback(
   )
 
   if (!cleaned.length) {
-    return {
-      positive: [],
-      negative: [],
-      model: "no-data",
-      generatedAt: new Date().toISOString()
-    }
+    return { positive: [], negative: [], model: "no-data", generatedAt: new Date().toISOString() }
+  }
+
+  if (!process.env.GROQ_API_KEY) {
+    return { positive: [], negative: [], model: "no-key", generatedAt: new Date().toISOString() }
   }
 
   const payload = JSON.stringify({ data: cleaned }, null, 2)
-
-  if (!process.env.GROQ_API_KEY) {
-    // If there’s no key, return empty (UI will fallback)
-    return {
-      positive: [],
-      negative: [],
-      model: "no-key",
-      generatedAt: new Date().toISOString()
-    }
-  }
-
   const client = new Groq({ apiKey: process.env.GROQ_API_KEY })
+
   const completion = await client.chat.completions.create({
     model,
     temperature,
@@ -86,38 +141,60 @@ export async function curateTopFeedback(
     stream: false,
     messages: [
       { role: "system", content: AI_CURATOR_SYSTEM_PROMPT },
-      { role: "user", content: AI_CURATOR_USER_PROMPT(payload) }
+      // Pass windowKey so the prompt can tailor its perspective
+      { role: "user", content: AI_CURATOR_USER_PROMPT(payload, windowKey ?? "30d") }
     ],
-    response_format: { type: "json_object" },
-    stop: null
+    response_format: { type: "json_object" }
   })
 
   const content = completion.choices?.[0]?.message?.content
   const now = new Date().toISOString()
+
   if (!content) {
     return { positive: [], negative: [], model, generatedAt: now }
   }
 
   try {
     const parsed = JSON.parse(content) as CuratedFeedbackResult
-    // flexible count: keep only strong themes (confidence >= 0.55) and cap at 5 each
+
+    // ── Raised thresholds: confidence >= 0.72, minimum 3 representative IDs ──
     const filterStrong = (arr?: CuratedFeedbackItem[]) =>
       (arr ?? [])
-        .filter(x => typeof x.confidence === "number" && x.confidence >= 0.55)
+        .filter(x =>
+          typeof x.confidence === "number" &&
+          x.confidence >= 0.72 &&            // was 0.65
+          x.representativeIds?.length >= 3 && // was 2
+          !isGenericSummary(x.summary)
+        )
         .slice(0, 5)
 
+    const rawPositive = filterStrong(parsed.positive)
+    const rawNegative = filterStrong(parsed.negative)
+
+    // Dedupe within each polarity group
+    const dedupedPositive = dedupeThemes(rawPositive)
+    const dedupedNegative = dedupeThemes(rawNegative)
+
     return {
-      positive: filterStrong(parsed.positive),
-      negative: filterStrong(parsed.negative),
+      positive: dedupedPositive,
+      negative: dedupedNegative,
       model,
       generatedAt: now
     }
-  } catch {
+  } catch (err) {
+    console.error("❌ Failed to parse AI response:", err)
     return { positive: [], negative: [], model, generatedAt: now }
   }
 }
 
-/** Generate and store highlights for a single restaurant and a given window */
+// ─── Window Highlight Generation ─────────────────────────────────────────────
+
+const WINDOW_CHAR_LIMIT: Record<WindowKey, number> = {
+  "7d": 6_000,  
+  "30d": 10_000, 
+  "90d": 14_000 
+}
+
 export async function generateWindowHighlights(restaurantId: string, windowKey: WindowKey) {
   const now = new Date()
   const start = windowStartFor(windowKey, now)
@@ -130,7 +207,25 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
     orderBy: { createdAt: "desc" }
   })
 
-  const records: FeedbackRecord[] = rows.map(r => ({
+  // ── Debug counts ──────────────────────────────────────────────────────────
+  console.log(`[${windowKey}] Total DB rows for restaurant ${restaurantId}:`, rows.length)
+
+  // ── FIX: use limitedRows for AI, not the full `rows` array ───────────────
+  const MAX_CHARS = WINDOW_CHAR_LIMIT[windowKey]
+  let totalChars = 0
+  const limitedRows: typeof rows = []
+
+  for (const r of rows) {
+    const len = r.feedback?.length ?? 0
+    if (totalChars + len > MAX_CHARS) break
+    totalChars += len
+    limitedRows.push(r)
+  }
+
+  console.log(`[${windowKey}] Rows sent to AI: ${limitedRows.length} (${totalChars} chars)`)
+
+  // ── Build FeedbackRecord[] from limitedRows (was incorrectly using `rows`) ─
+  const records: FeedbackRecord[] = limitedRows.map(r => ({
     id: r.id,
     sentiment: (r.sentiment as FeedbackRecord["sentiment"]) || "neutral",
     rating: r.rating ?? null,
@@ -138,21 +233,9 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
     createdAt: r.createdAt
   }))
 
-  const result = await curateTopFeedback(records)
+  const result = await curateTopFeedback(records, { windowKey })
 
-  // Guarantee at least one non-empty section (your rule)
-  if (!result.positive.length && !result.negative.length) {
-    const pos = records.find(r => r.sentiment === "positive")
-    const neg = records.find(r => r.sentiment === "negative")
-    result.positive = pos
-      ? [{ summary: "Guests reported a good experience.", themes: ["general"], representativeIds: [pos.id], confidence: 0.55 }]
-      : []
-    result.negative = !result.positive.length && neg
-      ? [{ summary: "Guests reported issues requiring attention.", themes: ["general"], representativeIds: [neg.id], confidence: 0.55 }]
-      : result.negative
-  }
-
-  // delete existing highlights for this window in the same time range (range match avoids ms-equality issues)
+  // Delete stale highlights for this window
   await prisma.topFeedback.deleteMany({
     where: {
       restaurantId,
@@ -171,6 +254,7 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
     await prisma.topFeedback.createMany({ data })
   }
 
+  console.log(`[${windowKey}] Stored ${data.length} highlights`)
   return { window: windowKey, ...result }
 }
 
@@ -194,7 +278,7 @@ function buildRow(
     restaurantId,
     feedbackId: item.representativeIds?.[0] ?? null,
     type,
-    summary: item.summary.trim(),
+    summary: (item.summary ?? "").trim(),
     themes: JSON.stringify(item.themes ?? []),
     representativeIds: JSON.stringify(item.representativeIds ?? []),
     confidence: clamp(item.confidence, 0, 1),
@@ -212,7 +296,7 @@ function clamp(n: number, lo: number, hi: number) {
   return Math.min(Math.max(n, lo), hi)
 }
 
-/** Nightly job: generate 7d / 30d / 90d for all restaurants */
+/** Nightly job: generate all windows for all restaurants */
 export async function generateAllWindowsForAllRestaurants() {
   const restaurants = await prisma.restaurant.findMany({ select: { id: true } })
   for (const r of restaurants) {

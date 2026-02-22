@@ -20,60 +20,130 @@ const experiences = [
 
 // --- micro comments ---
 const microPos = [
-  'good', 'nice', 'mast', 'solid', 'awesome', 'wow', 'super', 'great', 'bhaut saras', 'laajawab',
-  '👌', '👍', '🔥', '❤️', 'bdiya', 'khoob', 'taste on point', 'lovd it', 'OP', '10/10'
+  'good taste',
+  'liked it',
+  'very nice',
+  'mast food',
+  'worth the price',
+  'staff was polite',
+  'fresh food',
+  'will come again',
+  'service was quick',
+  'felt satisfied'
 ]
+
 const microNeu = [
-  'ok', 'fine', 'thik thak', 'average', 'theek', 'hmm', 'meh', 'chaleyga', 'chale', 'saru',
-  '🤷', '🙂', '…', 'hmmm', 'it was ok'
+  'okay overall',
+  'average taste',
+  'nothing special',
+  'can improve',
+  'it was fine',
+  'normal experience',
+  'expected better',
+  'not bad not great'
 ]
+
 const microNeg = [
-  'bad', 'meh', 'not good', 'kharab', 'boro', 'ghatia', 'bekar', 'nope', '👎', '😐',
-  'cold', 'late', 'salt too much', 'boring', 'faltu', '👎🏻', '🤢'
+  'not good',
+  'taste was off',
+  'too salty',
+  'food was cold',
+  'service slow',
+  'not worth it',
+  'disappointed',
+  'won’t order again'
 ]
 
 // --- short, messy phrases ---
 const shortPos = [
-  'cheesecake OP boss', 'service mast yaar', 'staff bahu saras 👌', 'mocktail fresh, liked',
-  'paneer soft soft', 'soup garam and tasty', 'ambience nice, music light', 'fast delivery 💨',
-  'dal bukhara wow yrr', 'kachori vibes but ravioli superb', 'value good for group'
+  'butter naan was soft and fresh',
+  'paneer tikka had good flavor',
+  'soup was hot and tasty',
+  'staff handled us nicely',
+  'quick service even on weekend',
+  'ambience was calm and clean',
+  'mocktails were refreshing',
+  'dal bukhara was rich and filling',
+  'good quantity for price',
+  'family liked the food'
 ]
+
 const shortNeu = [
-  'portion thik hai, price thoda high', 'noise zyada on weekend', 'ok ok, can try',
-  'taste fine but not consistent', 'service friendly par slow', 'soup thik, came late',
-  'cleanliness okay, table chipkoo thoda', 'menu long, confusing a bit'
+  'taste was okay but portion felt less',
+  'food good but service little slow',
+  'price slightly high for quantity',
+  'ambience nice but noisy in evening',
+  'menu confusing for first time',
+  'soup arrived late but was warm',
+  'cleanliness okay, can be better',
+  'average experience overall'
 ]
+
 const shortNeg = [
-  'mocktail bland yaar', 'nachos soggy 🥲', 'dal watery, no depth', 'paneer dry + salty',
-  'bill me extra item 🤨', 'server forgot tissues', 'khow suey very less qty',
-  'thai soup me coconut taste nahi', 'chowder too salty', 'veg undercooked, limp'
+  'hot and sour soup was cold',
+  'paneer was chewy and dry',
+  'nachos were soggy',
+  'service was slow during dinner time',
+  'bill had extra item added',
+  'vegetables felt undercooked',
+  'thai coconut soup lacked flavor',
+  'too much salt in gravy',
+  'wait time was very long',
+  'not happy with service'
 ]
 
 // --- Gujarati / Hinglish ---
 const guPos = [
-  'taste saras che', 'staff khub vinamra', 'service jhakkas che', 'garam ane tasty',
-  'price pan barabar', 'majaa aavyu'
+  'khavanu saras hatu',
+  'paneer khub soft hatu',
+  'service saras che',
+  'staff vinamra che',
+  'bhav barabar che',
+  'family ne gamyu'
 ]
+
 const guNeu = [
-  'bas theek che', 'chale che', 'avarage che', 'thodu noisy hatu', 'time lagi gayo'
+  'bas thik che',
+  'taste average che',
+  'time thodu vadhu lagyo',
+  'price thodu high lage che',
+  'chaley che'
 ]
+
 const guNeg = [
-  'swad nathi avyo', 'khub kharu hatu', 'bhav vadhare', 'thandu aavyu', 'order late'
+  'swad nathi avyo',
+  'khub kharu hatu',
+  'thandu aavyu',
+  'order late aavyo',
+  'bhav vadhare che'
 ]
 
 // --- gibberish / nonsense ---
 const gibberishPool = [
-  'Hiiii', 'hjfchjdf', 'yoooo', 'ufrrefif', 'aaaaa', 'hello??', 'abcdeee', 'kajdkad',
-  'no idea lol', 'whatt', '😵‍💫', '🥴🥴', 'jst asdfg', '?!?!?', 'hmmm idk', 'bsssss',
-  '....', '????', 'u there', 'uhuhuhuh', 'ye kya tha', 'chalo bye', '😶‍🌫️', 'bruhhh',
-  'reeee', 'dfgdfgdf', 'ghjgjhgj', 'sdf sdf sdf', 'bhhh', '🤪🤪🤪', 'haaaaan', 'okokok',
-  'bla bla', 'xD', '💀💀💀'
+  'ok',
+  'hmm',
+  'idk',
+  'whatever',
+  'not sure',
+  '…',
+  '????',
+  'no comments',
+  'skip',
+  'nothing to say'
 ]
 
 // --- dishes to sometimes include ---
 const dishes = [
-  'cheesecake', 'mocktails', 'Hot & Sour soup', 'Potato & Leek soup', 'nachos',
-  'paneer tikka', 'dal bukhara', 'ravioli', 'thai coconut soup', 'vegetable chauputas'
+  'butter naan',
+  'paneer tikka',
+  'dal bukhara',
+  'hot and sour soup',
+  'thai coconut soup',
+  'nachos',
+  'mocktails',
+  'vegetable curry',
+  'cheesecake',
+  'ravioli'
 ]
 
 // --- helpers ---

@@ -173,10 +173,6 @@ export default function FeedbackForm({
 
             // We consider it "submitted" from the user's POV
             onSubmit(submissionData)
-            toast({
-              title: 'Feedback queued',
-              description: 'We’ll send your feedback in the background.',
-            })
             setIsSubmitting(false)
             return
           }
