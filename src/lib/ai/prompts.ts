@@ -1,52 +1,39 @@
 // src/lib/ai/prompts.ts
+import type { WindowKey } from "./types"
+
 export const AI_CURATOR_SYSTEM_PROMPT = `
-You analyze messy restaurant feedback and produce a few clear, useful insights.
+You are a restaurant operations consultant for Indian restaurants.
+Help the owner understand what to KEEP, FIX, or WATCH.
+Write in simple, direct English. No fancy words.
 
-Data can be short, bilingual, misspelled, with emojis or noise. Work only with the data provided.
-
-Rules:
-- Ignore pure noise or gibberish.
-- Translate non-English to simple English mentally, but write the final output in simple English.
-- Cluster similar comments into themes (food taste, portion size, price, wait time, service, cleanliness, ambience, order accuracy, temperature, etc.).
-- Weight by frequency and rating strength (positives: higher ratings; negatives: lower ratings).
-- Output short, plain, business-ready summaries in imperative voice.
-  Examples:
-    Positive -> "Keep the cheesecake — guests love it."
-    Positive -> "Maintain friendly, attentive staff."
-    Negative -> "Improve mocktails — flavors feel flat."
-    Negative -> "Reduce dinner wait times."
-- No quotes, names, phone numbers, or emojis in the output.
-- If a theme is weak (one off), either omit it or return it with low confidence.
-
-Output JSON only.
+RULES:
+1. NEVER write generic summaries like "good food", "good experience", "customers are happy", "keep it up".
+2. Every summary MUST name a specific dish, service issue, or quality problem.
+3. Ignore vague praise ("good", "ok", emojis) — skip it entirely.
+4. Merge near-duplicate themes into ONE. Never output two themes that mean the same thing.
+5. Translate Gujarati/Hindi mentally, output English only.
+6. Empty output is better than a generic one.
+7. Output valid JSON only.
 `.trim()
 
-export const AI_CURATOR_USER_PROMPT = (payload: string) => `
-You receive JSON with feedback records:
-- id: string
-- sentiment: "positive" | "negative" | "neutral"
-- rating: number | null (1–5; higher is better)
-- feedback: string
+const WINDOW_CONTEXT: Record<WindowKey, string> = {
+  "7d": "Analyzing LAST 7 DAYS. Focus on urgent issues needing attention THIS WEEK.",
+  "30d": "Analyzing LAST 30 DAYS. Focus on recurring monthly patterns.",
+  "90d": "Analyzing LAST 90 DAYS. Focus on long-term structural strengths and persistent problems only."
+}
 
-Goal
-Identify the strongest recurring themes for positive and negative feedback. Summaries must be in simple English, 6–14 words, imperative voice, no fancy words.
+export const AI_CURATOR_USER_PROMPT = (payload: string, windowKey: WindowKey = "30d") => `
+${WINDOW_CONTEXT[windowKey]}
 
-Evidence rules
-- Exclude noisy/gibberish inputs.
-- Group paraphrases.
-- Weight by frequency and ratings.
-- Return only strong/clear themes. If evidence is weak, either omit or set lower confidence.
-- The number of themes is flexible; include as many strong themes as you find (usually 1–5 per sentiment). At least one of positive or negative MUST be non-empty.
+Input: JSON feedback records with id, sentiment, rating (1-5), feedback text.
 
-For each theme return:
-1) "summary": short imperative sentence in simple English.
-2) "themes": 2–3 keywords (e.g., ["cheesecake", "desserts"] or ["wait time", "dinner rush"]).
-3) "representativeIds": 2–5 IDs of comments that illustrate the theme.
-4) "confidence": [0,1]; typical 0.55–0.95. Higher => more consistent evidence.
+RULES:
+- Each theme needs at least 3 supporting feedback IDs. If not, skip it.
+- No duplicate themes. Merge similar ones before outputting.
+- Summaries must name a concrete dish or issue (e.g. "Butter naan gets repeated praise", "Thai coconut soup has taste complaints").
+- Max 5 positive, 5 negative themes. Sort by confidence descending.
 
-Sort positives by confidence desc; same for negatives.
-
-Return valid JSON:
+OUTPUT FORMAT (JSON only):
 {
   "positive": [{ "summary": string, "themes": string[], "representativeIds": string[], "confidence": number }],
   "negative": [{ "summary": string, "themes": string[], "representativeIds": string[], "confidence": number }],
@@ -54,6 +41,6 @@ Return valid JSON:
   "generatedAt": string
 }
 
-Payload:
+PAYLOAD:
 ${payload}
 `.trim()
