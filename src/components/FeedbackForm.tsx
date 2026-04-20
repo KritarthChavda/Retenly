@@ -282,7 +282,7 @@ export default function FeedbackForm({
             <div className="text-center mb-8">
               <h2 className="text-2xl font-semibold mb-2 text-white">Share Your Experience</h2>
               <p className="text-slate-300">
-                Your feedback helps us create memorable dining experiences
+                Your feedback helps us create memorable experiences
               </p>
             </div>
 
