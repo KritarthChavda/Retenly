@@ -2,6 +2,17 @@ import { jwtVerify, SignJWT } from 'jose'
 import { JWTPayload } from './types/auth'
 
 
+function getJWTSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET
+  if (!secret || secret === 'fallback-secret') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: JWT_SECRET environment variable is not configured or is set to insecure fallback value!')
+    }
+    console.warn('⚠️ WARNING: JWT_SECRET is not configured. Falling back to insecure key.')
+  }
+  return new TextEncoder().encode(secret || 'fallback-secret')
+}
+
 /**
  * Verify JWT token (Edge-compatible, no Prisma)
  * 
@@ -16,7 +27,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
         return null;
     }
     console.log('🔍 [auth-edge] Received token:', token);
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret');
+    const secret = getJWTSecret()
     
     // Properly await the JWT verification
     const { payload } = await jwtVerify(token, secret);
@@ -51,7 +62,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 export async function createToken(payload: JWTPayload): Promise<string> {
   try {
     console.log('🔐 Creating JWT token for:', payload)
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret')
+    const secret = getJWTSecret()
     
     const token = await new SignJWT({ ...payload })
       .setProtectedHeader({ alg: 'HS256' })
