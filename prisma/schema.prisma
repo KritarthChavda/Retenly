@@ -92,6 +92,9 @@ model Feedback {
   // Relations
   form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
 
+  @@index([formId])
+  @@index([formId, createdAt])
+  @@index([createdAt])
   @@map("feedbacks")
 }
 

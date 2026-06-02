@@ -21,6 +21,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No feedbackId provided' }, { status: 400 })
     }
 
+    // 1. Validate File Size (max 5MB)
+    const maxSizeBytes = 5 * 1024 * 1024
+    if (file.size > maxSizeBytes) {
+      return NextResponse.json({ error: 'File size too large. Maximum size is 5MB.' }, { status: 400 })
+    }
+
+    // 2. Validate File Type (must be audio format)
+    const allowedTypes = ['audio/webm', 'audio/ogg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/mpeg']
+    if (!file.type.startsWith('audio/') && !allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: 'Invalid file type. Only audio files are allowed.' }, { status: 400 })
+    }
+
+    // 3. Verify Feedback record exists, is recent, and has no existing upload
+    const feedback = await prisma.feedback.findUnique({
+      where: { id: feedbackId },
+      select: { id: true, voiceRecordingUrl: true, createdAt: true }
+    })
+
+    if (!feedback) {
+      return NextResponse.json({ error: 'Feedback record not found' }, { status: 404 })
+    }
+
+    if (feedback.voiceRecordingUrl) {
+      return NextResponse.json({ error: 'Voice recording already uploaded for this feedback.' }, { status: 400 })
+    }
+
+    // Limit voice upload window to 15 minutes after feedback creation
+    const creationTime = new Date(feedback.createdAt).getTime()
+    const timeElapsedMs = Date.now() - creationTime
+    const uploadWindowLimitMs = 15 * 60 * 1000 // 15 minutes
+
+    if (timeElapsedMs > uploadWindowLimitMs) {
+      return NextResponse.json({ error: 'Upload window has expired.' }, { status: 400 })
+    }
+
     const filePath = `voice-recordings/${new Date().toISOString()}-${file.name}`
 
     const { data, error } = await supabase.storage

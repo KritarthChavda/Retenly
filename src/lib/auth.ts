@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { prisma } from './prisma'
 import { createToken as createJWTToken, verifyToken } from './auth-edge'
 import { JWTPayload } from './types/auth' 
@@ -37,31 +38,33 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 /**
- * Generate random string for credentials
+ * Generate random string for credentials (cryptographically secure)
  * 
  * @param length - Length of string to generate
  * @returns Random string
  */
 export function generateRandomString(length: number = 10): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const bytes = crypto.randomBytes(length)
   let result = ''
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+    result += chars.charAt(bytes[i] % chars.length)
   }
   return result
 }
 
 /**
- * Generate secure password
+ * Generate secure password (cryptographically secure)
  * 
  * @param length - Length of password
  * @returns Secure password
  */
 export function generateSecurePassword(length: number = 12): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
+  const bytes = crypto.randomBytes(length)
   let result = ''
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+    result += chars.charAt(bytes[i] % chars.length)
   }
   return result
 }
