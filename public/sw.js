@@ -75,6 +75,24 @@ async function deletePendingFeedback(id) {
   })
 }
 
+async function updatePendingFeedback(item) {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite')
+    const store = transaction.objectStore(STORE_NAME)
+    const request = store.put(item)
+
+    request.onsuccess = () => {
+      resolve()
+    }
+
+    request.onerror = (event) => {
+      console.error('[SW] updatePendingFeedback error:', event.target.error)
+      reject(event.target.error)
+    }
+  })
+}
+
 self.addEventListener('sync', (event) => {
   console.log('[SW] sync event:', event.tag)
   if (event.tag === 'submit-feedback') {
@@ -86,22 +104,33 @@ async function processSingleFeedback(item) {
   const { id, slug, formData, audioBlob } = item
   console.log('[SW] Processing feedback id:', id, 'slug:', slug)
 
-  // 1. Submit feedback data
-  const feedbackResponse = await fetch(`/api/forms/${slug}/submit`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ answers: formData }),
-  })
+  let feedbackId = item.feedbackId
 
-  if (!feedbackResponse.ok) {
-    throw new Error('Failed to submit feedback data')
+  // 1. Submit feedback data if it hasn't been submitted yet
+  if (!item.textSubmitted) {
+    const feedbackResponse = await fetch(`/api/forms/${slug}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ answers: formData }),
+    })
+
+    if (!feedbackResponse.ok) {
+      throw new Error('Failed to submit feedback data')
+    }
+
+    const feedbackResult = await feedbackResponse.json()
+    feedbackId = feedbackResult.feedbackId
+    console.log('[SW] Feedback data submitted. feedbackId:', feedbackId)
+
+    // Save state back to IndexedDB before audio upload so we don't duplicate on retry
+    item.feedbackId = feedbackId
+    item.textSubmitted = true
+    await updatePendingFeedback(item)
+  } else {
+    console.log('[SW] Text feedback already submitted. feedbackId:', feedbackId)
   }
-
-  const feedbackResult = await feedbackResponse.json()
-  const feedbackId = feedbackResult.feedbackId
-  console.log('[SW] Feedback data submitted. feedbackId:', feedbackId)
 
   // 2. Upload audio if present
   if (audioBlob && feedbackId) {
