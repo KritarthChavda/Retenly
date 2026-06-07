@@ -1,0 +1,10 @@
+[2026-06-07T11:45:33.276Z] === POST /api/voice-upload started ===
+[2026-06-07T11:45:33.282Z] File details: name=voice-recording.webm, size=172244, type=audio/webm, feedbackId=cmq3pqugl0005ld04gta33c8m
+[2026-06-07T11:45:33.391Z] Uploading to Supabase bucket: uploads, path: voice-recordings/2026-06-07T11:45:33.391Z-voice-recording.webm
+[2026-06-07T11:45:33.864Z] Supabase upload successful. Public URL: https://kpwhecattkzpljkypznz.supabase.co/storage/v1/object/public/uploads/voice-recordings/2026-06-07T11:45:33.391Z-voice-recording.webm
+[2026-06-07T11:45:33.865Z] GROQ_API_KEY exists in process.env: true
+[2026-06-07T11:45:33.866Z] Starting Groq Whisper transcription call...
+[2026-06-07T11:45:33.873Z] Sending file buffer (172244 bytes) with extension: webm
+[2026-06-07T11:45:34.234Z] Groq transcription response text: " why is the AI not transcribing? let me know"
+[2026-06-07T11:45:34.235Z] Updating prisma feedback record cmq3pqugl0005ld04gta33c8m with URL and transcript...
+[2026-06-07T11:45:34.305Z] Prisma update complete. Returning success response.

@@ -14,6 +14,7 @@ interface FeedbackItem {
   feedback: string;
   sentiment: "positive" | "negative" | "neutral";
   voiceRecordingUrl?: string;
+  voiceTranscript?: string;
 }
 
 interface RecentFeedbackTableProps {
@@ -148,17 +149,24 @@ export function RecentFeedbackTable({ data }: RecentFeedbackTableProps) {
                     {getSentimentBadge(item.sentiment)}
                   </td>
                   <td className="p-4 max-w-xs">
-                    {isPlaceholderFeedback(item.feedback) ? (
-                      item.voiceRecordingUrl ? (
-                        <VoiceRecordingPlayer src={item.voiceRecordingUrl} className="justify-start" />
+                    <div className="space-y-1.5">
+                      {isPlaceholderFeedback(item.feedback) ? (
+                        item.voiceRecordingUrl ? (
+                          <VoiceRecordingPlayer src={item.voiceRecordingUrl} className="justify-start" />
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">No text feedback</p>
+                        )
                       ) : (
-                        <p className="text-sm text-muted-foreground italic">No text feedback</p>
-                      )
-                    ) : (
-                      <p className="text-sm text-muted-foreground truncate">
-                        {item.feedback}
-                      </p>
-                    )}
+                        <p className="text-sm text-muted-foreground truncate" title={item.feedback}>
+                          {item.feedback}
+                        </p>
+                      )}
+                      {item.voiceRecordingUrl && item.voiceTranscript && (
+                        <p className="text-xs text-muted-foreground italic line-clamp-1" title={item.voiceTranscript}>
+                          🎤 "{item.voiceTranscript}"
+                        </p>
+                      )}
+                    </div>
                   </td>
                   <td className="p-4 text-right">
                     <Button

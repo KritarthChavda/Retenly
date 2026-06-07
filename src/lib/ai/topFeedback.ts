@@ -203,7 +203,7 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
 
   const rows = await prisma.feedback.findMany({
     where: { form: { restaurantId }, createdAt: { gte: start, lt: end } },
-    select: { id: true, sentiment: true, rating: true, feedback: true, createdAt: true },
+    select: { id: true, sentiment: true, rating: true, feedback: true, voiceTranscript: true, createdAt: true },
     orderBy: { createdAt: "desc" }
   })
 
@@ -216,7 +216,7 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
   const limitedRows: typeof rows = []
 
   for (const r of rows) {
-    const len = r.feedback?.length ?? 0
+    const len = (r.feedback?.length ?? 0) + (r.voiceTranscript?.length ?? 0)
     if (totalChars + len > MAX_CHARS) break
     totalChars += len
     limitedRows.push(r)
@@ -225,13 +225,21 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
   console.log(`[${windowKey}] Rows sent to AI: ${limitedRows.length} (${totalChars} chars)`)
 
   // ── Build FeedbackRecord[] from limitedRows (was incorrectly using `rows`) ─
-  const records: FeedbackRecord[] = limitedRows.map(r => ({
-    id: r.id,
-    sentiment: (r.sentiment as FeedbackRecord["sentiment"]) || "neutral",
-    rating: r.rating ?? null,
-    feedback: r.feedback?.trim() || "",
-    createdAt: r.createdAt
-  }))
+  const records: FeedbackRecord[] = limitedRows.map(r => {
+    const textFeedback = r.feedback?.trim() || ""
+    const voiceTranscriptText = r.voiceTranscript?.trim() 
+      ? `[Voice Transcript]: ${r.voiceTranscript.trim()}` 
+      : ""
+    const combinedFeedback = [textFeedback, voiceTranscriptText].filter(Boolean).join("\n")
+
+    return {
+      id: r.id,
+      sentiment: (r.sentiment as FeedbackRecord["sentiment"]) || "neutral",
+      rating: r.rating ?? null,
+      feedback: combinedFeedback || "No feedback text provided",
+      createdAt: r.createdAt
+    }
+  })
 
   const result = await curateTopFeedback(records, { windowKey })
 

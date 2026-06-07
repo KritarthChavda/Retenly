@@ -84,6 +84,7 @@ model Feedback {
   experience        String // "YO!", "Pretty good", "Okay-ish", "Not great"
   feedback          String? // Optional text feedback
   voiceRecordingUrl String? // URL to the voice recording in storage
+  voiceTranscript   String? // Transcription from AI (Whisper)
   sentiment         String   @default("neutral") // "positive", "neutral", "negative"
   rating            Int? // Numeric rating (1-5)
   createdAt         DateTime @default(now())

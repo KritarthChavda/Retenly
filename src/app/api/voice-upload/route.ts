@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import Groq, { toFile } from 'groq-sdk'
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
 
     const filePath = `voice-recordings/${new Date().toISOString()}-${file.name}`
 
+    // Upload to Supabase
     const { data, error } = await supabase.storage
       .from(process.env.SUPABASE_VOICE_RECORDINGS_BUCKET!)
       .upload(filePath, file)
@@ -71,13 +73,40 @@ export async function POST(request: NextRequest) {
       .from(process.env.SUPABASE_VOICE_RECORDINGS_BUCKET!)
       .getPublicUrl(filePath)
 
-    // Update the feedback record with the voice recording URL
+    // 4. Convert voice recording to text using Groq Whisper API
+    let transcript: string | null = null
+    if (process.env.GROQ_API_KEY) {
+      try {
+        console.log('🎤 [voice-upload] Starting Groq Whisper transcription...')
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+        const fileBuffer = Buffer.from(await file.arrayBuffer())
+        const fileExt = file.name.split('.').pop() || 'webm'
+        const groqFile = await toFile(fileBuffer, `voice-recording.${fileExt}`)
+
+        const response = await groq.audio.transcriptions.create({
+          file: groqFile,
+          model: 'whisper-large-v3-turbo',
+          response_format: 'json',
+        })
+        transcript = response.text || null
+        console.log('✅ [voice-upload] Groq transcription result:', transcript)
+      } catch (transcribeError) {
+        console.error('⚠️ [voice-upload] Groq transcription failed:', transcribeError)
+      }
+    } else {
+      console.warn('⚠️ [voice-upload] GROQ_API_KEY is not defined. Skipping transcription.')
+    }
+
+    // Update the feedback record with the voice recording URL and transcript
     await prisma.feedback.update({
       where: { id: feedbackId },
-      data: { voiceRecordingUrl: publicUrl },
+      data: { 
+        voiceRecordingUrl: publicUrl,
+        voiceTranscript: transcript
+      },
     });
 
-    return NextResponse.json({ url: publicUrl }, { status: 200 })
+    return NextResponse.json({ url: publicUrl, transcript }, { status: 200 })
   } catch (err) {
     console.error('Upload API error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
