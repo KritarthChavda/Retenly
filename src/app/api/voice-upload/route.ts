@@ -67,14 +67,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Feedback record not found' }, { status: 404 })
     }
 
+    // Already uploaded: this is a retry of a request that already succeeded, so
+    // report success. Returning 400 here made the service worker treat a completed
+    // upload as a permanent failure and retry it forever.
     if (feedback.voiceRecordingUrl) {
-      return NextResponse.json({ error: 'Voice recording already uploaded for this feedback.' }, { status: 400 })
+      return NextResponse.json(
+        { url: feedback.voiceRecordingUrl, alreadyUploaded: true },
+        { status: 200 }
+      )
     }
 
-    // Limit voice upload window to 15 minutes after feedback creation
+    // Bound how late a recording may arrive, but stay well clear of the Background
+    // Sync retry backoff — a 15-minute window expired before the browser's own
+    // retries did, so any deferred sync was guaranteed to fail permanently.
     const creationTime = new Date(feedback.createdAt).getTime()
     const timeElapsedMs = Date.now() - creationTime
-    const uploadWindowLimitMs = 15 * 60 * 1000 // 15 minutes
+    const uploadWindowLimitMs = 24 * 60 * 60 * 1000 // 24 hours
 
     if (timeElapsedMs > uploadWindowLimitMs) {
       return NextResponse.json({ error: 'Upload window has expired.' }, { status: 400 })
@@ -99,7 +107,16 @@ export async function POST(request: NextRequest) {
       .from(process.env.SUPABASE_VOICE_RECORDINGS_BUCKET!)
       .getPublicUrl(filePath)
 
-    // 4. Convert voice recording to text using Groq Whisper API
+    // 4. Link the recording to the feedback BEFORE transcribing.
+    // Transcription is two blocking Groq calls with their own retry budget; if the
+    // function timed out during them, the audio sat in Supabase with nothing in the
+    // database pointing at it and the owner never saw the recording at all.
+    await prisma.feedback.update({
+      where: { id: feedbackId },
+      data: { voiceRecordingUrl: publicUrl },
+    })
+
+    // 5. Convert voice recording to text using Groq Whisper API (best effort)
     let transcript: string | null = null
     if (process.env.GROQ_API_KEY) {
       try {
@@ -155,14 +172,14 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ [voice-upload] GROQ_API_KEY is not defined. Skipping transcription.')
     }
 
-    // Update the feedback record with the voice recording URL and transcript
-    await prisma.feedback.update({
-      where: { id: feedbackId },
-      data: { 
-        voiceRecordingUrl: publicUrl,
-        voiceTranscript: transcript
-      },
-    });
+    // 6. Store the transcript if we got one. The recording is already linked, so a
+    // failure here costs the transcript, never the audio.
+    if (transcript) {
+      await prisma.feedback.update({
+        where: { id: feedbackId },
+        data: { voiceTranscript: transcript },
+      })
+    }
 
     return NextResponse.json({ url: publicUrl, transcript }, { status: 200 })
   } catch (err) {
