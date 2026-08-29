@@ -168,12 +168,12 @@ ul:first-of-type {
     <div class="container">
       <div class="header">
         <h1>Welcome to Retenly</h1>
-        <p>Your Restaurant Dashboard is Ready!</p>
+        <p>Your Business Dashboard is Ready!</p>
       </div>
       <div class="content">
         <h2>Hello ${restaurantName} Team 👋</h2>
         <ul>
-          <li>Your restaurant has been successfully registered on Retenly's feedback platform.</li>
+          <li>Your business has been successfully registered on Retenly's feedback platform.</li>
           <li>You can now start collecting and managing customer feedback with ease.</li>
         </ul>
 
@@ -214,7 +214,7 @@ ul:first-of-type {
     const textBody = `
 Welcome to Retenly - ${restaurantName}
 
-Your restaurant has been successfully registered on our feedback platform.
+Your business has been successfully registered on our feedback platform.
 
 Login Credentials:
 Username: ${username}

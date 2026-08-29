@@ -231,7 +231,7 @@ export const Header = ({ restaurantName, restaurantLogo }: HeaderProps) => {
                 )}
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-medium">{restaurantName}</p>
-                  <p className="text-xs text-muted-foreground">Restaurant Owner</p>
+                  <p className="text-xs text-muted-foreground">Business Owner</p>
                 </div>
               </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />

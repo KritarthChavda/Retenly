@@ -46,7 +46,7 @@ export async function POST(
     if (!restaurant || !restaurant.forms[0]) {
       console.warn('Restaurant or form not found for slug:', slug)
       return NextResponse.json(
-        { error: 'Restaurant form not found' },
+        { error: 'Business form not found' },
         { status: 404 }
       )
     }

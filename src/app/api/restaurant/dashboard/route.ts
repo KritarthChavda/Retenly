@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       where: { id: restaurantId },
       omit: { password: true }
     })
-    if (!restaurant) return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
+    if (!restaurant) return NextResponse.json({ error: 'Business not found' }, { status: 404 })
 
     const { searchParams } = new URL(request.url)
     const includeAllFeedbacks = searchParams.get('includeAllFeedbacks') === 'true'
@@ -93,13 +93,25 @@ export async function GET(request: NextRequest) {
     const repeatFeedbackRate = uniqueCustomers ? Math.round((repeatCustomers / uniqueCustomers) * 100) : 0;
 
     // ⬇️ THIS is the fix: use enum + range (no strings like "_30d")
-    const curatedHighlights = await prisma.topFeedback.findMany({
+    const allHighlights = await prisma.topFeedback.findMany({
       where: {
         restaurantId,
         window: windowEnum,             // 👈 enum, not string
       },
       orderBy: [{ generatedAt: 'desc' }, { confidence: 'desc' }]
     })
+
+    // Show only the most recent curation run. Rows from earlier runs accumulated in
+    // this table, so without this the dashboard mixed dozens of highlights from
+    // different months together and presented them all as current. A single run
+    // stamps each of its rows within a few seconds of each other.
+    const newestRun = allHighlights[0]?.generatedAt
+    const RUN_TOLERANCE_MS = 5 * 60 * 1000
+    const curatedHighlights = newestRun
+      ? allHighlights.filter(
+          h => newestRun.getTime() - h.generatedAt.getTime() < RUN_TOLERANCE_MS
+        )
+      : []
 
     const topHighlights = curatedHighlights.map(item => ({
       id: item.feedbackId ?? item.id,
@@ -119,8 +131,7 @@ export async function GET(request: NextRequest) {
         npsScore,
         mostLovedFeature: computeMostLoved(allFeedbacks),
         averageRating,
-        repeatFeedbackRate,
-        kpiCardData: buildKpis()
+        repeatFeedbackRate
       },
       topHighlights,
       recentFeedbacks: allFeedbacks.slice(0, 20),
@@ -136,12 +147,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// keep your existing buildKpis or define it if missing
-function buildKpis() {
-  return {
-    totalFeedback: { change: 0, changeLabel: 'vs last month' },
-    averageRating: { change: 0, changeLabel: 'vs last month' },
-    positiveFeedback: { change: 0, changeLabel: 'vs last month' },
-    repeatFeedbackRate: { change: 0, changeLabel: 'vs last month' }
-  }
-}

@@ -95,7 +95,7 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-white">🍽️ Restaurant Admin</h1>
+              <h1 className="text-2xl font-bold text-white">🏢 Business Admin</h1>
             </div>
             <button
               onClick={handleLogout}
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
             className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
           >
             <span>➕</span>
-            Create Restaurant
+            Create Business
           </Link>
           <Link
             href="/admin/forms/create"
@@ -129,9 +129,9 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Restaurants Section */}
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">🏪 Restaurants</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">🏢 Businesses</h2>
             {restaurants.length === 0 ? (
-              <p className="text-gray-400">No restaurants created yet.</p>
+              <p className="text-gray-400">No businesses created yet.</p>
             ) : (
               <div className="space-y-3">
                 {restaurants.map((restaurant) => (
