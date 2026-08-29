@@ -24,12 +24,6 @@ interface Analytics {
   mostLovedFeature: string
   averageRating: number
   repeatFeedbackRate: number
-  kpiCardData: {
-    totalFeedback: { change: number; changeLabel: string }
-    averageRating: { change: number; changeLabel: string }
-    positiveFeedback: { change: number; changeLabel: string }
-    repeatFeedbackRate: { change: number; changeLabel: string }
-  }
 }
 
 interface FeedbackHighlight {
@@ -195,7 +189,7 @@ export default function DashboardLayout({
         <Header restaurantName="Error" />
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
-            <p className="text-red-500">{error || 'Unable to load restaurant data.'}</p>
+            <p className="text-red-500">{error || 'Unable to load business data.'}</p>
           </div>
         </div>
       </div>

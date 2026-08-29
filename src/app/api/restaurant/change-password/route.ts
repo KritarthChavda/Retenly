@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
     const isPasswordValid = await bcrypt.compare(currentPassword, restaurant.password);

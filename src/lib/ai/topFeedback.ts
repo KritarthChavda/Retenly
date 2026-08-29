@@ -251,13 +251,18 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
 
   const result = await curateTopFeedback(records, { windowKey, businessName })
 
-  // Delete stale highlights for this window
+  // Delete stale highlights for this window.
+  //
+  // This used to also require windowStart >= start && windowEnd <= end, which only
+  // ever matched rows generated for the *current* bounds. Rows from earlier runs
+  // have an older windowStart, so they never matched and were never removed — they
+  // piled up run after run until the dashboard was rendering dozens of highlights
+  // from months-old feedback. Every row for this restaurant+window is superseded by
+  // the batch we are about to write, so clear them all.
   await prisma.topFeedback.deleteMany({
     where: {
       restaurantId,
-      window: windowEnum,
-      windowStart: { gte: start },
-      windowEnd: { lte: end }
+      window: windowEnum
     }
   })
 

@@ -110,7 +110,7 @@ export default function CustomerForm() {
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white mb-4">❌ {error}</h1>
-          <p className="text-gray-400">Unable to load restaurant data.</p>
+          <p className="text-gray-400">Unable to load business data.</p>
           <p className="text-gray-500 text-sm mt-2">Please check the URL or try again later.</p>
         </div>
       </div>

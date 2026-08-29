@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Restaurant Feedback",
-  description: "Share your dining experience and help us improve",
+  title: "Business Feedback",
+  description: "Share your experience and help us improve",
   icons: {
     icon: [
       {

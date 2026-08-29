@@ -193,13 +193,13 @@ export default function CreateForm() {
             ← Back to Dashboard
           </Link>
           <h1 className="text-3xl font-bold text-white">Create New Feedback Form</h1>
-          <p className="text-gray-400 mt-2">Set up a customized feedback form for your restaurant</p>
+          <p className="text-gray-400 mt-2">Set up a customized feedback form for your business</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Restaurant Selection */}
+          {/* Business Selection */}
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Restaurant Selection</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Business Selection</h2>
             <div>
               <label htmlFor="restaurant" className="block text-sm font-medium text-gray-300 mb-2">
                 Select Restaurant *
@@ -211,7 +211,7 @@ export default function CreateForm() {
                 className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 required
               >
-                <option value="">Choose a restaurant</option>
+                <option value="">Choose a business</option>
                 {restaurants.map((restaurant) => (
                   <option key={restaurant.id} value={restaurant.slug}>
                     {restaurant.name}

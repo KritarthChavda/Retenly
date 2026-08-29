@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     if (!name || !email) {
       return NextResponse.json(
-        { error: 'Restaurant name and email are required' },
+        { error: 'Business name and email are required' },
         { status: 400 }
       )
     }

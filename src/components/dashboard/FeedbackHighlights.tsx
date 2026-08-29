@@ -1,4 +1,4 @@
-import { Star, ThumbsUp, ThumbsDown } from "lucide-react"
+import { ThumbsUp, ThumbsDown } from "lucide-react"
 
 interface FeedbackItem {
   id: string
@@ -32,20 +32,7 @@ const FeedbackCard = ({ item, type }: { item: FeedbackItem; type: "positive" | "
         </div>
 
         <div className="flex-1 space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="font-medium text-sm">{isPositive ? "Positive highlight" : "Needs improvement"}</p>
-            <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3 h-3 ${i < Math.round(item.confidence * 5)
-                    ? "text-yellow-400 fill-yellow-400"
-                    : "text-muted-foreground/30"
-                    }`}
-                />
-              ))}
-            </div>
-          </div>
+          <p className="font-medium text-sm">{isPositive ? "Positive highlight" : "Needs improvement"}</p>
 
           <p className="text-sm text-muted-foreground leading-relaxed">
             "{item.summary}"
@@ -73,10 +60,6 @@ const FeedbackCard = ({ item, type }: { item: FeedbackItem; type: "positive" | "
 export const FeedbackHighlights = ({ highlights }: FeedbackHighlightsProps) => {
   const positiveFeedback = highlights.filter((item) => item.type === "positive")
   const negativeFeedback = highlights.filter((item) => item.type === "negative")
-  console.log(
-  "NEGATIVE IDS:",
-  negativeFeedback.map(i => i.id)
-)
 
   return (
     <div className="grid md:grid-cols-2 gap-6">

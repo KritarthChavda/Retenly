@@ -141,7 +141,7 @@ export async function verifyRestaurantCredentials(username: string, password: st
     })
 
     if (!restaurant) {
-      return { success: false, error: 'Restaurant not found' }
+      return { success: false, error: 'Business not found' }
     }
 
     const isValidPassword = await verifyPassword(password, restaurant.password)

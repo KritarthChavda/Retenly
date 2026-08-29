@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     if (!restaurantSlug || !title || !questions || !Array.isArray(questions)) {
       return NextResponse.json(
-        { error: 'Restaurant slug, title, and questions array are required' },
+        { error: 'Business slug, title, and questions array are required' },
         { status: 400 }
       )
     }
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     if (!restaurant) {
       return NextResponse.json(
-        { error: 'Restaurant not found' },
+        { error: 'Business not found' },
         { status: 404 }
       )
     }

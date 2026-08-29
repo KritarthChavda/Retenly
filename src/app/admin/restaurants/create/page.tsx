@@ -48,7 +48,7 @@ export default function CreateRestaurant() {
         })
       } else {
         const data = await response.json()
-        setError(data.error || 'Failed to create restaurant')
+        setError(data.error || 'Failed to create business')
       }
     } catch (error) {
       setError('An error occurred. Please try again.')
@@ -74,7 +74,7 @@ export default function CreateRestaurant() {
               >
                 ← Back to Dashboard
               </Link>
-              <h1 className="text-2xl font-bold text-white">🏪 Create Restaurant</h1>
+              <h1 className="text-2xl font-bold text-white">🏢 Create Business</h1>
             </div>
           </div>
         </div>
@@ -84,13 +84,13 @@ export default function CreateRestaurant() {
         {!credentials ? (
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-white mb-6">
-              Create New Restaurant
+              Create New Business
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="restaurantName" className="block text-sm font-medium text-gray-300 mb-2">
-                  Restaurant Name
+                  Business Name
                 </label>
                 <input
                   type="text"
@@ -98,14 +98,14 @@ export default function CreateRestaurant() {
                   value={restaurantName}
                   onChange={(e) => setRestaurantName(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter restaurant name"
+                  placeholder="Enter business name"
                   required
                 />
               </div>
 
               <div>
                 <label htmlFor="restaurantEmail" className="block text-sm font-medium text-gray-300 mb-2">
-                  Restaurant Email
+                  Business Email
                 </label>
                 <input
                   type="email"
@@ -113,7 +113,7 @@ export default function CreateRestaurant() {
                   value={restaurantEmail}
                   onChange={(e) => setRestaurantEmail(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter restaurant email"
+                  placeholder="Enter business email"
                   required
                 />
               </div>
@@ -130,7 +130,7 @@ export default function CreateRestaurant() {
                   disabled={isLoading}
                   className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white px-6 py-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed"
                 >
-                  {isLoading ? 'Creating...' : 'Create Restaurant'}
+                  {isLoading ? 'Creating...' : 'Create Business'}
                 </button>
                 <button
                   type="button"
@@ -157,7 +157,7 @@ export default function CreateRestaurant() {
             </div>
 
             <div className="bg-gray-700 rounded-lg p-4 mb-6">
-              <h3 className="text-white font-medium mb-3">🔐 Restaurant Credentials</h3>
+              <h3 className="text-white font-medium mb-3">🔐 Business Credentials</h3>
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-400">Username:</label>

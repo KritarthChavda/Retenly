@@ -21,12 +21,6 @@ interface Analytics {
   mostLovedFeature: string;
   averageRating: number;
   repeatFeedbackRate: number;
-  kpiCardData: {
-    totalFeedback: { change: number; changeLabel: string };
-    averageRating: { change: number; changeLabel: string };
-    positiveFeedback: { change: number; changeLabel: string };
-    repeatFeedbackRate: { change: number; changeLabel: string };
-  };
 }
 
 interface FeedbackHighlight {

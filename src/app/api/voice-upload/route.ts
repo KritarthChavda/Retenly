@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
           file: groqFile,
           model: 'whisper-large-v3-turbo',
           response_format: 'json',
-          prompt: 'kaise ho, kem cho, main thik hu, badhiya, maja ma, all good, delicious food, very nice, thank you, restaurant review',
+          prompt: 'kaise ho, kem cho, main thik hu, badhiya, maja ma, all good, delicious food, very nice, thank you, customer review',
         })
         transcript = response.text || null
         console.log('✅ [voice-upload] Groq transcription result:', transcript)
