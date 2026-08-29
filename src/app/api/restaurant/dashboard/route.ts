@@ -93,13 +93,25 @@ export async function GET(request: NextRequest) {
     const repeatFeedbackRate = uniqueCustomers ? Math.round((repeatCustomers / uniqueCustomers) * 100) : 0;
 
     // ⬇️ THIS is the fix: use enum + range (no strings like "_30d")
-    const curatedHighlights = await prisma.topFeedback.findMany({
+    const allHighlights = await prisma.topFeedback.findMany({
       where: {
         restaurantId,
         window: windowEnum,             // 👈 enum, not string
       },
       orderBy: [{ generatedAt: 'desc' }, { confidence: 'desc' }]
     })
+
+    // Show only the most recent curation run. Rows from earlier runs accumulated in
+    // this table, so without this the dashboard mixed dozens of highlights from
+    // different months together and presented them all as current. A single run
+    // stamps each of its rows within a few seconds of each other.
+    const newestRun = allHighlights[0]?.generatedAt
+    const RUN_TOLERANCE_MS = 5 * 60 * 1000
+    const curatedHighlights = newestRun
+      ? allHighlights.filter(
+          h => newestRun.getTime() - h.generatedAt.getTime() < RUN_TOLERANCE_MS
+        )
+      : []
 
     const topHighlights = curatedHighlights.map(item => ({
       id: item.feedbackId ?? item.id,
