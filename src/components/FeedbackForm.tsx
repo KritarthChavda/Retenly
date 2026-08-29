@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/use-toast'
 import restaurantCover from "@/assets/restaurant-cover.jpg"
 import restaurantLogo from "@/assets/restaurant-logo.png"
 import Link from "next/link"
-import { addFeedback } from '@/lib/indexedDB'
+import { addFeedback, deleteFeedback } from '@/lib/indexedDB'
+import { pickRecorderMimeType, voiceRecordingFileName } from '@/lib/audio'
 
 interface FeedbackFormProps {
   onSubmit: (data: FeedbackData) => void;
@@ -81,15 +82,25 @@ export default function FeedbackForm({
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        mediaRecorderRef.current = new MediaRecorder(stream)
-        const recordedMimeType = mediaRecorderRef.current.mimeType
+
+        // Ask for a container we know is supported. Without this, `recorder.mimeType`
+        // is "" until recording has started, and a Blob stamped with an empty type is
+        // rejected by /api/voice-upload as "Invalid file type".
+        const preferredMimeType = pickRecorderMimeType()
+        const recorder = preferredMimeType
+          ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+          : new MediaRecorder(stream)
+        mediaRecorderRef.current = recorder
         audioChunksRef.current = []
 
-        mediaRecorderRef.current.ondataavailable = (event) => {
+        recorder.ondataavailable = (event) => {
           audioChunksRef.current.push(event.data)
         }
 
-        mediaRecorderRef.current.onstop = () => {
+        recorder.onstop = () => {
+          // By onstop the recorder reports its real container; fall back through the
+          // requested type so the blob is never left without a MIME type.
+          const recordedMimeType = recorder.mimeType || preferredMimeType || 'audio/webm'
           const audioBlob = new Blob(audioChunksRef.current, { type: recordedMimeType })
           setAudioBlob(audioBlob)
           stream.getTracks().forEach(track => track.stop()) // Stop microphone access
@@ -109,6 +120,42 @@ export default function FeedbackForm({
           variant: "destructive"
         })
       }
+    }
+  }
+
+  /**
+   * Queue this submission for the service worker to retry once connectivity is back.
+   * Returns false when Background Sync isn't usable, so the caller can surface the
+   * original error instead of pretending the feedback was sent.
+   */
+  const queueForBackgroundSync = async (
+    submissionData: Omit<FeedbackData, 'voiceRecordingUrl'>
+  ): Promise<boolean> => {
+    if (!('serviceWorker' in navigator)) return false
+
+    try {
+      const registration = await navigator.serviceWorker.ready
+      if (!('sync' in registration)) return false
+
+      const id = new Date().toISOString()
+      const fileName = audioBlob ? voiceRecordingFileName(audioBlob.type) : null
+      await addFeedback(id, restaurantSlug, submissionData, audioBlob, fileName)
+
+      try {
+        await registration.sync.register('submit-feedback')
+      } catch (syncErr) {
+        // `'sync' in registration` is true even when the browser has Background Sync
+        // disabled; register() is the only place that reveals it. Drop the row so it
+        // can't be replayed later as a duplicate.
+        console.warn('[Form] sync.register failed:', syncErr)
+        await deleteFeedback(id).catch(() => undefined)
+        return false
+      }
+
+      return true
+    } catch (err) {
+      console.warn('[Form] Could not queue for Background Sync:', err)
+      return false
     }
   }
 
@@ -155,50 +202,61 @@ export default function FeedbackForm({
     const submissionData = { ...formData, phoneNumber: formattedPhone }
     console.log('[Form] Submission data:', submissionData)
 
+    // The marketing demo renders this form with a hardcoded slug that no longer
+    // resolves. Submitting it 404s, and on the Background Sync path that failure
+    // sat at the head of the shared IndexedDB queue and blocked every real customer
+    // submission from that device. A demo should never persist anything anyway.
+    if (isDefault) {
+      console.log('[Form] Demo mode — skipping submission')
+      onSubmit(submissionData)
+      setIsSubmitting(false)
+      return
+    }
+
     try {
-      if ('serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.ready
-          const hasSync = 'sync' in registration
-          console.log('[Form] SW ready. Background Sync supported:', hasSync)
+      // Submit straight to the server first. Queuing for Background Sync up front
+      // meant the customer saw the Thank You page before anything had reached the
+      // server, so whenever the sync event never fired — Background Sync blocked in
+      // site settings, battery saver, the browser giving up after a few retries —
+      // the feedback was lost and nobody, customer or owner, ever found out.
+      let result: { feedbackId?: string } | null = null
+      let serverRejected = false
 
-          if (hasSync) {
-            console.log('[Form] Using Background Sync flow')
-            const id = new Date().toISOString()
-            await addFeedback(id, restaurantSlug, submissionData, audioBlob)
+      try {
+        const response = await fetch(`/api/forms/${restaurantSlug}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers: submissionData }),
+        })
 
-            await registration.sync.register('submit-feedback')
-
-            // We consider it "submitted" from the user's POV
-            onSubmit(submissionData)
-            setIsSubmitting(false)
-            return
-          }
-        } catch (err) {
-          console.warn('[Form] SW / Background Sync failed, falling back:', err)
+        if (!response.ok) {
+          // The server understood us and said no; a later retry says no as well.
+          serverRejected = true
+          throw new Error(`Submission failed: ${response.status}`)
         }
+
+        result = await response.json()
+      } catch (submitError) {
+        if (serverRejected) throw submitError
+
+        // Genuinely offline / unreachable — this is what the queue is for.
+        console.warn('[Form] Direct submission failed, queueing for Background Sync:', submitError)
+        const queued = await queueForBackgroundSync(submissionData)
+        if (!queued) throw submitError
+
+        console.log('[Form] Queued for Background Sync')
+        onSubmit(submissionData)
+        setIsSubmitting(false)
+        return
       }
 
-      console.log('[Form] Using direct fallback flow (no Background Sync)')
-
-      // Fallback: normal HTTP submission
-      const response = await fetch(`/api/forms/${restaurantSlug}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: submissionData }),
-      })
-
-      if (!response.ok) throw new Error('Submission failed')
-
-      const result = await response.json()
-      const feedbackId = result.feedbackId
+      const feedbackId = result?.feedbackId
       onSubmit(submissionData)
 
       // Upload voice recording in the background (no need to block UX)
       if (audioBlob && feedbackId) {
         const uploadFormData = new FormData()
-        const ext = audioBlob.type.includes('mp4') ? 'mp4' : audioBlob.type.includes('ogg') ? 'ogg' : 'webm'
-        uploadFormData.append('file', audioBlob, `voice-recording.${ext}`)
+        uploadFormData.append('file', audioBlob, voiceRecordingFileName(audioBlob.type))
         uploadFormData.append('feedbackId', feedbackId)
 
         fetch('/api/voice-upload', {

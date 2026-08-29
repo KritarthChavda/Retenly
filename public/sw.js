@@ -100,6 +100,17 @@ self.addEventListener('sync', (event) => {
   }
 })
 
+/** Mirror of extensionForAudioType in src/lib/audio.ts (a SW cannot import from src/). */
+function fallbackFileName(mimeType) {
+  const type = (mimeType || '').toLowerCase()
+  let ext = 'webm'
+  if (type.includes('mp4') || type.includes('m4a') || type.includes('aac')) ext = 'mp4'
+  else if (type.includes('ogg')) ext = 'ogg'
+  else if (type.includes('wav')) ext = 'wav'
+  else if (type.includes('mpeg') || type.includes('mp3')) ext = 'mp3'
+  return 'voice-recording.' + ext
+}
+
 async function processSingleFeedback(item) {
   const { id, slug, formData, audioBlob } = item
   console.log('[SW] Processing feedback id:', id, 'slug:', slug)
@@ -135,13 +146,9 @@ async function processSingleFeedback(item) {
   // 2. Upload audio if present
   if (audioBlob && feedbackId) {
     const uploadFormData = new FormData()
-    // Derive extension from the recorded MIME type so the filename matches the
-    // actual container (iOS records audio/mp4, others audio/webm|ogg). Keeping
-    // this in sync with FeedbackForm's fallback path avoids handing Whisper a
-    // mislabeled file.
-    const type = audioBlob.type || ''
-    const ext = type.includes('mp4') ? 'mp4' : type.includes('ogg') ? 'ogg' : 'webm'
-    uploadFormData.append('file', audioBlob, `voice-recording.${ext}`)
+    // Prefer the filename the app derived (src/lib/audio.ts) and fall back to the
+    // blob's own type for records queued by older clients.
+    uploadFormData.append('file', audioBlob, item.fileName || fallbackFileName(audioBlob.type))
     uploadFormData.append('feedbackId', feedbackId)
 
     const uploadResponse = await fetch('/api/voice-upload', {
@@ -150,10 +157,22 @@ async function processSingleFeedback(item) {
     })
 
     if (!uploadResponse.ok) {
-      throw new Error('Failed to upload voice recording')
+      // A 4xx is permanent (bad file type, already uploaded, expired window).
+      // Retrying it would fail forever and — because this queue is processed
+      // oldest-first — block every later feedback on this device from ever being
+      // submitted. The text feedback is already saved, so drop the audio and move on.
+      if (uploadResponse.status >= 400 && uploadResponse.status < 500) {
+        console.error(
+          '[SW] Voice upload permanently rejected (' + uploadResponse.status + ') for feedbackId:',
+          feedbackId,
+          '- discarding audio so the queue is not blocked'
+        )
+      } else {
+        throw new Error('Failed to upload voice recording: ' + uploadResponse.status)
+      }
+    } else {
+      console.log('[SW] Voice recording uploaded for feedbackId:', feedbackId)
     }
-
-    console.log('[SW] Voice recording uploaded for feedbackId:', feedbackId)
   }
 
   // 3. Delete from IndexedDB

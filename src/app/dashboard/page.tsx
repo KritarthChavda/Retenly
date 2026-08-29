@@ -81,6 +81,9 @@ export default function RestaurantDashboard() {
     feedback: feedback.feedback,
     sentiment: feedback.sentiment || "neutral",
     voiceRecordingUrl: feedback.voiceRecordingUrl,
+    // RecentFeedbackTable only renders the transcript when both of these are set;
+    // dropping it here hid every voice transcript on the dashboard.
+    voiceTranscript: feedback.voiceTranscript,
   }))
 
   return (
