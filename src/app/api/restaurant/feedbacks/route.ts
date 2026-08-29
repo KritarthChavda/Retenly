@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
 
     if (!restaurant) {
       return NextResponse.json(
-        { error: 'Restaurant not found' },
+        { error: 'Business not found' },
         { status: 404 }
       )
     }

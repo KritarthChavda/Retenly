@@ -43,7 +43,7 @@ export default function DemoIndex() {
               </div>
               <div className="flex items-center space-x-3">
                 <span className="text-green-400">✅</span>
-                <span className="text-gray-300">Restaurant logo and title centered</span>
+                <span className="text-gray-300">Business logo and title centered</span>
               </div>
               <div className="flex items-center space-x-3">
                 <span className="text-green-400">✅</span>

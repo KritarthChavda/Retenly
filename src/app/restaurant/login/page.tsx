@@ -52,10 +52,10 @@ export default function RestaurantLogin() {
             <span className="text-white text-xl">🍽️</span>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-            Restaurant Login
+            Business Login
           </h2>
           <p className="mt-2 text-center text-sm text-gray-400">
-            Access your restaurant dashboard
+            Access your business dashboard
           </p>
         </div>
         

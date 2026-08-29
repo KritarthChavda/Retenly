@@ -72,7 +72,7 @@ export default function Settings() {
         {/* Header Section */}
         <div className="space-y-2">
           <p className="text-muted-foreground">
-            Manage your restaurant profile and preferences
+            Manage your business profile and preferences
           </p>
         </div>
 
@@ -86,14 +86,14 @@ export default function Settings() {
                 </div>
                 <div>
                   <CardTitle>Profile Settings</CardTitle>
-                  <CardDescription>Update your restaurant information</CardDescription>
+                  <CardDescription>Update your business information</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Restaurant Name</label>
+                  <label className="text-sm font-medium text-muted-foreground">Business Name</label>
                   <Input 
                     value={restaurant.name} 
                     className="mt-1 bg-background/50 border-glass"

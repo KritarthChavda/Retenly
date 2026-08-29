@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       where: { id: restaurantId },
       omit: { password: true }
     })
-    if (!restaurant) return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
+    if (!restaurant) return NextResponse.json({ error: 'Business not found' }, { status: 404 })
 
     const { searchParams } = new URL(request.url)
     const includeAllFeedbacks = searchParams.get('includeAllFeedbacks') === 'true'
@@ -131,8 +131,7 @@ export async function GET(request: NextRequest) {
         npsScore,
         mostLovedFeature: computeMostLoved(allFeedbacks),
         averageRating,
-        repeatFeedbackRate,
-        kpiCardData: buildKpis()
+        repeatFeedbackRate
       },
       topHighlights,
       recentFeedbacks: allFeedbacks.slice(0, 20),
@@ -148,12 +147,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// keep your existing buildKpis or define it if missing
-function buildKpis() {
-  return {
-    totalFeedback: { change: 0, changeLabel: 'vs last month' },
-    averageRating: { change: 0, changeLabel: 'vs last month' },
-    positiveFeedback: { change: 0, changeLabel: 'vs last month' },
-    repeatFeedbackRate: { change: 0, changeLabel: 'vs last month' }
-  }
-}

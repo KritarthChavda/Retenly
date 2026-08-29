@@ -1,23 +1,23 @@
 # Retenly
 
-A comprehensive, multi-tenant restaurant feedback platform built with modern technologies and production-ready architecture.
+A comprehensive, multi-tenant customer feedback platform built with modern technologies and production-ready architecture.
 
 ## 🚀 Features
 
 ### Core Platform
-- 🏢 **Multi-tenant architecture** - Support for multiple restaurants
-- 🔐 **Secure authentication** - JWT-based auth for admins and restaurant owners
+- 🏢 **Multi-tenant architecture** - Support for multiple businesses
+- 🔐 **Secure authentication** - JWT-based auth for admins and business owners
 - 📊 **Advanced analytics** - Sentiment analysis, rating calculations, trend tracking
-- 📧 **Email notifications** - Automated credential delivery to restaurant owners
+- 📧 **Email notifications** - Automated credential delivery to business owners
 - 🛡️ **Production security** - Input validation, XSS protection, rate limiting
 
 ### Admin Dashboard
-- 👥 **Restaurant management** - Create, manage multiple restaurants
+- 👥 **Business management** - Create, manage multiple businesses
 - 📈 **System analytics** - Platform-wide statistics and insights
 - 🔑 **Credential management** - Secure password generation and delivery
 - 📋 **Form management** - Create and customize feedback forms
 
-### Restaurant Dashboard
+### Business Dashboard
 - 📊 **Real-time analytics** - Feedback sentiment, ratings, trends
 - 📝 **Feedback management** - View and analyze customer responses
 - 🎨 **Form customization** - Branded forms with logos and custom messages
@@ -195,4 +195,4 @@ Submits new feedback to the database.
 
 ---
 
-Built with ❤️ for better restaurant experiences
+Built with ❤️ for better customer experiences

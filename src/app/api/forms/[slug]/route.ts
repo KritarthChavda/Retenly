@@ -16,7 +16,7 @@ export async function GET(
 
     if (!slug) {
       return NextResponse.json(
-        { error: 'Restaurant slug is required' },
+        { error: 'Business slug is required' },
         { status: 400 }
       )
     }
@@ -42,7 +42,7 @@ export async function GET(
     if (!restaurant) {
       console.warn('Restaurant not found by slug:', slug)
       return NextResponse.json(
-        { error: 'Restaurant not found' },
+        { error: 'Business not found' },
         { status: 404 }
       )
     }
@@ -51,7 +51,7 @@ export async function GET(
     if (!form) {
       console.warn('No forms found for restaurant:', { restaurantId: restaurant.id, slug })
       return NextResponse.json(
-        { error: 'No feedback form available for this restaurant' },
+        { error: 'No feedback form available for this business' },
         { status: 404 }
       )
     }

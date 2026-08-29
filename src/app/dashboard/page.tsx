@@ -142,32 +142,24 @@ export default function RestaurantDashboard() {
             <KPICard
               title="Total Feedback"
               value={analytics.totalFeedbackCount}
-              change={analytics.kpiCardData.totalFeedback.change}
-              changeLabel={analytics.kpiCardData.totalFeedback.changeLabel}
               icon={<MessageSquare className="w-6 h-6" />}
               variant="positive"
             />
             <KPICard
               title="Average Rating"
               value={`${analytics.averageRating}/5`}
-              change={analytics.kpiCardData.averageRating.change}
-              changeLabel={analytics.kpiCardData.averageRating.changeLabel}
               icon={<Star className="w-6 h-6" />}
               variant="neutral"
             />
             <KPICard
               title="Positive Feedback"
               value={`${analytics.totalFeedbackCount > 0 ? Math.round((analytics.sentimentData.positive / analytics.totalFeedbackCount) * 100) : 0}%`}
-              change={analytics.kpiCardData.positiveFeedback.change}
-              changeLabel={analytics.kpiCardData.positiveFeedback.changeLabel}
               icon={<TrendingUp className="w-6 h-6" />}
               variant="positive"
             />
             <KPICard
               title="Repeat Feedback Rate"
               value={`${analytics.repeatFeedbackRate}%`}
-              change={analytics.kpiCardData.repeatFeedbackRate.change}
-              changeLabel={analytics.kpiCardData.repeatFeedbackRate.changeLabel}
               icon={<RefreshCcw className="w-6 h-6" />}
               variant="neutral"
             />
