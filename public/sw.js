@@ -135,7 +135,13 @@ async function processSingleFeedback(item) {
   // 2. Upload audio if present
   if (audioBlob && feedbackId) {
     const uploadFormData = new FormData()
-    uploadFormData.append('file', audioBlob, 'voice-recording.webm')
+    // Derive extension from the recorded MIME type so the filename matches the
+    // actual container (iOS records audio/mp4, others audio/webm|ogg). Keeping
+    // this in sync with FeedbackForm's fallback path avoids handing Whisper a
+    // mislabeled file.
+    const type = audioBlob.type || ''
+    const ext = type.includes('mp4') ? 'mp4' : type.includes('ogg') ? 'ogg' : 'webm'
+    uploadFormData.append('file', audioBlob, `voice-recording.${ext}`)
     uploadFormData.append('feedbackId', feedbackId)
 
     const uploadResponse = await fetch('/api/voice-upload', {
