@@ -48,7 +48,12 @@ export async function GET(request: NextRequest) {
     if (!payload || payload.type !== 'restaurant') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const restaurantId = payload.id
-    const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId } })
+    // `restaurant` is serialised straight into the JSON response below, so never
+    // load the bcrypt password hash into it.
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      omit: { password: true }
+    })
     if (!restaurant) return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
 
     const { searchParams } = new URL(request.url)

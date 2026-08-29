@@ -99,13 +99,16 @@ export async function POST(
           sentiment = 'neutral'
           rating = 3
           break
+        // 😡 is the leftmost, worst face on the form (labelled "Terrible") and 🙁 is
+        // one step milder, so 'Not great' must score below 'Poor' — these two were
+        // the wrong way round, scoring the angriest rating higher than the sad one.
         case 'Not great':
           sentiment = 'negative'
-          rating = 2
+          rating = 1
           break
         case 'Poor':
           sentiment = 'negative'
-          rating = 1
+          rating = 2
           break
         default:
           sentiment = 'neutral'

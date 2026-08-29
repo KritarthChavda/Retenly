@@ -77,9 +77,6 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value
 
   console.log('🔐 Auth token found:', !!token)
-  if (token) {
-    console.log('🔐 Token preview:', token.substring(0, 50) + '...')
-  }
 
   if (!token) {
     console.log('❌ No auth token, redirecting to login')
@@ -93,11 +90,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // Verify token
-  console.log('🔍 [middleware] About to verify token...');
-  console.log('🔍 [middleware] Token preview:', token.substring(0, 50) + '...');
   const user = await verifyToken(token)
-  console.log('🔍 [middleware] Token verification result:', user);
-  
+
   if (!user) {
     console.log('❌ [middleware] Invalid token, redirecting to home');
     const response = NextResponse.redirect(new URL('/', request.url))

@@ -20,12 +20,35 @@ function openDB() {
   });
 }
 
-export async function addFeedback(id: string, slug: string, formData: any, audioBlob: Blob | null) {
+export async function addFeedback(
+  id: string,
+  slug: string,
+  formData: any,
+  audioBlob: Blob | null,
+  fileName: string | null = null
+) {
   const db = await openDB();
   return new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.put({ id, slug, formData, audioBlob });
+    // `fileName` is derived in the app (see lib/audio.ts) so the service worker
+    // doesn't have to re-derive it from a blob whose type may be missing.
+    const request = store.put({ id, slug, formData, audioBlob, fileName });
+    request.onsuccess = () => {
+      resolve();
+    };
+    request.onerror = (event) => {
+      reject((event.target as IDBRequest).error);
+    };
+  });
+}
+
+export async function deleteFeedback(id: string) {
+  const db = await openDB();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.delete(id);
     request.onsuccess = () => {
       resolve();
     };

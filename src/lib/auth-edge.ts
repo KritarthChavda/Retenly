@@ -21,19 +21,17 @@ function getJWTSecret(): Uint8Array {
  */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    console.log('🔍 [auth-edge] Verifying JWT token...');
     if (!token) {
         console.log('❌ [auth-edge] Token is null or undefined');
         return null;
     }
-    console.log('🔍 [auth-edge] Received token:', token);
+    // Never log the token itself — it is a bearer credential, and this runs on
+    // every authenticated request, so it would sit in the platform logs forever.
     const secret = getJWTSecret()
-    
+
     // Properly await the JWT verification
     const { payload } = await jwtVerify(token, secret);
-    
-    console.log('✅ [auth-edge] JWT verification successful, payload:', payload);
-    
+
     if (payload && typeof payload === 'object') {
       const result = {
         id: payload.id as string,
@@ -41,7 +39,6 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
         type: payload.type as 'admin' | 'restaurant',
         restaurantId: payload.restaurantId as string | undefined
       };
-      console.log('✅ [auth-edge] Extracted user data:', result);
       return result;
     }
     
