@@ -109,8 +109,9 @@ export async function curateTopFeedback(
   {
     model = DEFAULT_MODEL,
     temperature = DEFAULT_TEMP,
-    windowKey
-  }: { model?: string; temperature?: number; windowKey?: WindowKey } = {}
+    windowKey,
+    businessName
+  }: { model?: string; temperature?: number; windowKey?: WindowKey; businessName?: string } = {}
 ): Promise<CuratedFeedbackResult> {
 
   const cleaned = preprocess(
@@ -142,7 +143,7 @@ export async function curateTopFeedback(
     messages: [
       { role: "system", content: AI_CURATOR_SYSTEM_PROMPT },
       // Pass windowKey so the prompt can tailor its perspective
-      { role: "user", content: AI_CURATOR_USER_PROMPT(payload, windowKey ?? "30d") }
+      { role: "user", content: AI_CURATOR_USER_PROMPT(payload, windowKey ?? "30d", businessName) }
     ],
     response_format: { type: "json_object" }
   })
@@ -241,7 +242,14 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
     }
   })
 
-  const result = await curateTopFeedback(records, { windowKey })
+  // Fetch business name for LLM context
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { name: true }
+  })
+  const businessName = restaurant?.name || undefined
+
+  const result = await curateTopFeedback(records, { windowKey, businessName })
 
   // Delete stale highlights for this window
   await prisma.topFeedback.deleteMany({
