@@ -29,10 +29,33 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Validate File Type (must be audio format)
-    const allowedTypes = ['audio/webm', 'audio/ogg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/mpeg']
-    if (!file.type.startsWith('audio/') && !allowedTypes.includes(file.type)) {
+    //
+    // MediaRecorder blobs can arrive with an empty or generic MIME type (older
+    // clients, and browsers that only populate mimeType once recording starts),
+    // so fall back to the extension rather than discarding the recording.
+    const EXTENSION_CONTENT_TYPES: Record<string, string> = {
+      webm: 'audio/webm',
+      ogg: 'audio/ogg',
+      mp4: 'audio/mp4',
+      m4a: 'audio/mp4',
+      mp3: 'audio/mpeg',
+      mpeg: 'audio/mpeg',
+      wav: 'audio/wav',
+    }
+
+    const declaredType = (file.type || '').toLowerCase()
+    const fileExt = (file.name.split('.').pop() || '').toLowerCase()
+    const isGenericType = !declaredType || declaredType === 'application/octet-stream'
+    const extContentType = EXTENSION_CONTENT_TYPES[fileExt]
+
+    if (!declaredType.startsWith('audio/') && !(isGenericType && extContentType)) {
       return NextResponse.json({ error: 'Invalid file type. Only audio files are allowed.' }, { status: 400 })
     }
+
+    // What we hand to Supabase / Groq — never an empty string.
+    const contentType = declaredType.startsWith('audio/')
+      ? declaredType
+      : (extContentType ?? 'audio/webm')
 
     // 3. Verify Feedback record exists, is recent, and has no existing upload
     const feedback = await prisma.feedback.findUnique({
@@ -57,12 +80,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Upload window has expired.' }, { status: 400 })
     }
 
-    const filePath = `voice-recordings/${new Date().toISOString()}-${file.name}`
+    // Colons from toISOString() are legal but awkward in object keys / URLs.
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_')
+    const filePath = `voice-recordings/${timestamp}-${feedbackId}-${safeName}`
 
     // Upload to Supabase
     const { data, error } = await supabase.storage
       .from(process.env.SUPABASE_VOICE_RECORDINGS_BUCKET!)
-      .upload(filePath, file)
+      .upload(filePath, file, { contentType, upsert: false })
 
     if (error) {
       console.error('Supabase upload error:', error)
@@ -80,8 +106,10 @@ export async function POST(request: NextRequest) {
         console.log('🎤 [voice-upload] Starting Groq Whisper transcription...')
         const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
         const fileBuffer = Buffer.from(await file.arrayBuffer())
-        const fileExt = file.name.split('.').pop() || 'webm'
-        const groqFile = await toFile(fileBuffer, `voice-recording.${fileExt}`)
+        // Whisper sniffs the container, but give it a truthful name + type anyway.
+        const groqFile = await toFile(fileBuffer, `voice-recording.${fileExt || 'webm'}`, {
+          type: contentType,
+        })
 
         const response = await groq.audio.transcriptions.create({
           file: groqFile,

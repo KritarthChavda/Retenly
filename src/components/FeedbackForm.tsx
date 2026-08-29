@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/use-toast'
 import restaurantCover from "@/assets/restaurant-cover.jpg"
 import restaurantLogo from "@/assets/restaurant-logo.png"
 import Link from "next/link"
-import { addFeedback } from '@/lib/indexedDB'
+import { addFeedback, deleteFeedback } from '@/lib/indexedDB'
+import { pickRecorderMimeType, voiceRecordingFileName } from '@/lib/audio'
 
 interface FeedbackFormProps {
   onSubmit: (data: FeedbackData) => void;
@@ -81,15 +82,25 @@ export default function FeedbackForm({
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        mediaRecorderRef.current = new MediaRecorder(stream)
-        const recordedMimeType = mediaRecorderRef.current.mimeType
+
+        // Ask for a container we know is supported. Without this, `recorder.mimeType`
+        // is "" until recording has started, and a Blob stamped with an empty type is
+        // rejected by /api/voice-upload as "Invalid file type".
+        const preferredMimeType = pickRecorderMimeType()
+        const recorder = preferredMimeType
+          ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+          : new MediaRecorder(stream)
+        mediaRecorderRef.current = recorder
         audioChunksRef.current = []
 
-        mediaRecorderRef.current.ondataavailable = (event) => {
+        recorder.ondataavailable = (event) => {
           audioChunksRef.current.push(event.data)
         }
 
-        mediaRecorderRef.current.onstop = () => {
+        recorder.onstop = () => {
+          // By onstop the recorder reports its real container; fall back through the
+          // requested type so the blob is never left without a MIME type.
+          const recordedMimeType = recorder.mimeType || preferredMimeType || 'audio/webm'
           const audioBlob = new Blob(audioChunksRef.current, { type: recordedMimeType })
           setAudioBlob(audioBlob)
           stream.getTracks().forEach(track => track.stop()) // Stop microphone access
@@ -165,9 +176,18 @@ export default function FeedbackForm({
           if (hasSync) {
             console.log('[Form] Using Background Sync flow')
             const id = new Date().toISOString()
-            await addFeedback(id, restaurantSlug, submissionData, audioBlob)
+            const fileName = audioBlob ? voiceRecordingFileName(audioBlob.type) : null
+            await addFeedback(id, restaurantSlug, submissionData, audioBlob, fileName)
 
-            await registration.sync.register('submit-feedback')
+            try {
+              await registration.sync.register('submit-feedback')
+            } catch (syncErr) {
+              // `'sync' in registration` is true even when the browser has Background
+              // Sync disabled, and register() only throws here. Drop the queued row so
+              // the fallback below doesn't leave a duplicate behind for a later sync.
+              await deleteFeedback(id).catch(() => undefined)
+              throw syncErr
+            }
 
             // We consider it "submitted" from the user's POV
             onSubmit(submissionData)
@@ -197,8 +217,7 @@ export default function FeedbackForm({
       // Upload voice recording in the background (no need to block UX)
       if (audioBlob && feedbackId) {
         const uploadFormData = new FormData()
-        const ext = audioBlob.type.includes('mp4') ? 'mp4' : audioBlob.type.includes('ogg') ? 'ogg' : 'webm'
-        uploadFormData.append('file', audioBlob, `voice-recording.${ext}`)
+        uploadFormData.append('file', audioBlob, voiceRecordingFileName(audioBlob.type))
         uploadFormData.append('feedbackId', feedbackId)
 
         fetch('/api/voice-upload', {
