@@ -109,8 +109,9 @@ export async function curateTopFeedback(
   {
     model = DEFAULT_MODEL,
     temperature = DEFAULT_TEMP,
-    windowKey
-  }: { model?: string; temperature?: number; windowKey?: WindowKey } = {}
+    windowKey,
+    businessName
+  }: { model?: string; temperature?: number; windowKey?: WindowKey; businessName?: string } = {}
 ): Promise<CuratedFeedbackResult> {
 
   const cleaned = preprocess(
@@ -142,7 +143,7 @@ export async function curateTopFeedback(
     messages: [
       { role: "system", content: AI_CURATOR_SYSTEM_PROMPT },
       // Pass windowKey so the prompt can tailor its perspective
-      { role: "user", content: AI_CURATOR_USER_PROMPT(payload, windowKey ?? "30d") }
+      { role: "user", content: AI_CURATOR_USER_PROMPT(payload, windowKey ?? "30d", businessName) }
     ],
     response_format: { type: "json_object" }
   })
@@ -203,7 +204,7 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
 
   const rows = await prisma.feedback.findMany({
     where: { form: { restaurantId }, createdAt: { gte: start, lt: end } },
-    select: { id: true, sentiment: true, rating: true, feedback: true, createdAt: true },
+    select: { id: true, sentiment: true, rating: true, feedback: true, voiceTranscript: true, createdAt: true },
     orderBy: { createdAt: "desc" }
   })
 
@@ -216,7 +217,7 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
   const limitedRows: typeof rows = []
 
   for (const r of rows) {
-    const len = r.feedback?.length ?? 0
+    const len = (r.feedback?.length ?? 0) + (r.voiceTranscript?.length ?? 0)
     if (totalChars + len > MAX_CHARS) break
     totalChars += len
     limitedRows.push(r)
@@ -225,15 +226,30 @@ export async function generateWindowHighlights(restaurantId: string, windowKey: 
   console.log(`[${windowKey}] Rows sent to AI: ${limitedRows.length} (${totalChars} chars)`)
 
   // ── Build FeedbackRecord[] from limitedRows (was incorrectly using `rows`) ─
-  const records: FeedbackRecord[] = limitedRows.map(r => ({
-    id: r.id,
-    sentiment: (r.sentiment as FeedbackRecord["sentiment"]) || "neutral",
-    rating: r.rating ?? null,
-    feedback: r.feedback?.trim() || "",
-    createdAt: r.createdAt
-  }))
+  const records: FeedbackRecord[] = limitedRows.map(r => {
+    const textFeedback = r.feedback?.trim() || ""
+    const voiceTranscriptText = r.voiceTranscript?.trim() 
+      ? `[Voice Transcript]: ${r.voiceTranscript.trim()}` 
+      : ""
+    const combinedFeedback = [textFeedback, voiceTranscriptText].filter(Boolean).join("\n")
 
-  const result = await curateTopFeedback(records, { windowKey })
+    return {
+      id: r.id,
+      sentiment: (r.sentiment as FeedbackRecord["sentiment"]) || "neutral",
+      rating: r.rating ?? null,
+      feedback: combinedFeedback || "No feedback text provided",
+      createdAt: r.createdAt
+    }
+  })
+
+  // Fetch business name for LLM context
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { name: true }
+  })
+  const businessName = restaurant?.name || undefined
+
+  const result = await curateTopFeedback(records, { windowKey, businessName })
 
   // Delete stale highlights for this window
   await prisma.topFeedback.deleteMany({

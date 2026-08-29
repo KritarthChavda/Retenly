@@ -82,6 +82,7 @@ export default function FeedbackForm({
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         mediaRecorderRef.current = new MediaRecorder(stream)
+        const recordedMimeType = mediaRecorderRef.current.mimeType
         audioChunksRef.current = []
 
         mediaRecorderRef.current.ondataavailable = (event) => {
@@ -89,7 +90,7 @@ export default function FeedbackForm({
         }
 
         mediaRecorderRef.current.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+          const audioBlob = new Blob(audioChunksRef.current, { type: recordedMimeType })
           setAudioBlob(audioBlob)
           stream.getTracks().forEach(track => track.stop()) // Stop microphone access
         }
@@ -155,8 +156,6 @@ export default function FeedbackForm({
     console.log('[Form] Submission data:', submissionData)
 
     try {
-      let usedBackgroundSync = false
-
       if ('serviceWorker' in navigator) {
         try {
           const registration = await navigator.serviceWorker.ready
@@ -169,7 +168,6 @@ export default function FeedbackForm({
             await addFeedback(id, restaurantSlug, submissionData, audioBlob)
 
             await registration.sync.register('submit-feedback')
-            usedBackgroundSync = true
 
             // We consider it "submitted" from the user's POV
             onSubmit(submissionData)
@@ -199,7 +197,8 @@ export default function FeedbackForm({
       // Upload voice recording in the background (no need to block UX)
       if (audioBlob && feedbackId) {
         const uploadFormData = new FormData()
-        uploadFormData.append('file', audioBlob, 'voice-recording.webm')
+        const ext = audioBlob.type.includes('mp4') ? 'mp4' : audioBlob.type.includes('ogg') ? 'ogg' : 'webm'
+        uploadFormData.append('file', audioBlob, `voice-recording.${ext}`)
         uploadFormData.append('feedbackId', feedbackId)
 
         fetch('/api/voice-upload', {

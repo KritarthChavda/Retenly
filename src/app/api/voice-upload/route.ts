@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import Groq, { toFile } from 'groq-sdk'
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
 
     const filePath = `voice-recordings/${new Date().toISOString()}-${file.name}`
 
+    // Upload to Supabase
     const { data, error } = await supabase.storage
       .from(process.env.SUPABASE_VOICE_RECORDINGS_BUCKET!)
       .upload(filePath, file)
@@ -71,13 +73,70 @@ export async function POST(request: NextRequest) {
       .from(process.env.SUPABASE_VOICE_RECORDINGS_BUCKET!)
       .getPublicUrl(filePath)
 
-    // Update the feedback record with the voice recording URL
+    // 4. Convert voice recording to text using Groq Whisper API
+    let transcript: string | null = null
+    if (process.env.GROQ_API_KEY) {
+      try {
+        console.log('🎤 [voice-upload] Starting Groq Whisper transcription...')
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+        const fileBuffer = Buffer.from(await file.arrayBuffer())
+        const fileExt = file.name.split('.').pop() || 'webm'
+        const groqFile = await toFile(fileBuffer, `voice-recording.${fileExt}`)
+
+        const response = await groq.audio.transcriptions.create({
+          file: groqFile,
+          model: 'whisper-large-v3-turbo',
+          response_format: 'json',
+          prompt: 'kaise ho, kem cho, main thik hu, badhiya, maja ma, all good, delicious food, very nice, thank you, restaurant review',
+        })
+        transcript = response.text || null
+        console.log('✅ [voice-upload] Groq transcription result:', transcript)
+
+        // Post-processing: transliterate to Romanized text if it contains non-ASCII characters
+        if (transcript && /[^\x00-\x7F]/.test(transcript)) {
+          try {
+            console.log('✨ [voice-upload] Non-ASCII script detected, transliterating...')
+            const translitResponse = await groq.chat.completions.create({
+              model: 'llama-3.1-8b-instant',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a precise transliterator. Convert any native script (like Devanagari, Gujarati script) into Romanized Latin characters (Hinglish/Gujlish) representing the exact spoken sounds phonetically. Do NOT translate the words into English meaning. Only output the transliterated phonetic text. If the text is already in Latin characters, return it exactly as is.'
+                },
+                {
+                  role: 'user',
+                  content: transcript
+                }
+              ],
+              temperature: 0.1,
+              max_tokens: 200
+            })
+            const transliterated = translitResponse.choices[0]?.message?.content?.trim()
+            if (transliterated) {
+              console.log('✅ [voice-upload] Transliterated result:', transliterated)
+              transcript = transliterated
+            }
+          } catch (translitError) {
+            console.error('⚠️ [voice-upload] Transliteration failed, falling back to original transcription:', translitError)
+          }
+        }
+      } catch (transcribeError) {
+        console.error('⚠️ [voice-upload] Groq transcription failed:', transcribeError)
+      }
+    } else {
+      console.warn('⚠️ [voice-upload] GROQ_API_KEY is not defined. Skipping transcription.')
+    }
+
+    // Update the feedback record with the voice recording URL and transcript
     await prisma.feedback.update({
       where: { id: feedbackId },
-      data: { voiceRecordingUrl: publicUrl },
+      data: { 
+        voiceRecordingUrl: publicUrl,
+        voiceTranscript: transcript
+      },
     });
 
-    return NextResponse.json({ url: publicUrl }, { status: 200 })
+    return NextResponse.json({ url: publicUrl, transcript }, { status: 200 })
   } catch (err) {
     console.error('Upload API error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
