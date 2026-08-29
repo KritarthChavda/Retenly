@@ -57,6 +57,8 @@ interface FeedbackItem {
   feedback: string;
   sentiment: "positive" | "negative" | "neutral";
   tags?: string[];
+  voiceRecordingUrl?: string;
+  voiceTranscript?: string;
 }
 
 export default function DashboardLayout({
@@ -129,6 +131,7 @@ export default function DashboardLayout({
           sentiment: (f.sentiment || 'neutral').toLowerCase(),
           tags: [],
           voiceRecordingUrl: f.voiceRecordingUrl,
+          voiceTranscript: f.voiceTranscript,
         }))
         setRecentFeedbacks(recent)
         setForms(data.forms || [])
@@ -142,6 +145,7 @@ export default function DashboardLayout({
           sentiment: f.sentiment?.toLowerCase() || 'neutral',
           tags: [],
           voiceRecordingUrl: f.voiceRecordingUrl,
+          voiceTranscript: f.voiceTranscript,
         }));
         setAllFeedback(transformedFeedback);
       } else {

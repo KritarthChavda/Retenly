@@ -83,10 +83,12 @@ export default function AllFeedback() {
 
   const handleExport = () => {
     const csvContent = [
-      "Date,Customer Name,Rating,Sentiment,Feedback",
-      ...filteredFeedback.map(item =>
-        `${item.date},${item.customerName},${item.rating},${item.sentiment},"${item.feedback.replace(/"/g, '""')}"`
-      )
+      "Date,Customer Name,Rating,Sentiment,Feedback,Voice Transcript",
+      ...filteredFeedback.map(item => {
+        const cleanFeedback = (item.feedback || '').replace(/"/g, '""')
+        const cleanTranscript = (item.voiceTranscript || '').replace(/"/g, '""')
+        return `${item.date},${item.customerName},${item.rating},${item.sentiment},"${cleanFeedback}","${cleanTranscript}"`
+      })
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -212,7 +214,17 @@ export default function AllFeedback() {
                         <p className="text-sm text-muted-foreground italic">No text feedback</p>
                       )}
                       {feedback.voiceRecordingUrl && (
-                        <VoiceRecordingPlayer src={feedback.voiceRecordingUrl} />
+                        <div className="space-y-2">
+                          <VoiceRecordingPlayer src={feedback.voiceRecordingUrl} />
+                          {feedback.voiceTranscript && (
+                            <div className="rounded-lg bg-glass p-3 text-sm text-foreground/90 border border-glass/20 relative">
+                              <span className="absolute top-2 right-2 inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-semibold text-primary uppercase tracking-wider">
+                                AI Transcript
+                              </span>
+                              <p className="pr-20 leading-relaxed italic">"{feedback.voiceTranscript}"</p>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -242,12 +254,20 @@ export default function AllFeedback() {
                         <p className="text-sm text-muted-foreground mb-2">
                           <strong>Sentiment:</strong> {getSentimentLabel(feedback.sentiment)}
                         </p>
-                        {feedback.voiceRecordingUrl && (
-                          <div className="mt-3">
+                         {feedback.voiceRecordingUrl && (
+                          <div className="mt-3 space-y-2">
                             <p className="text-sm text-muted-foreground mb-1.5">
                               <strong>Voice Recording:</strong>
                             </p>
                             <VoiceRecordingPlayer src={feedback.voiceRecordingUrl} />
+                            {feedback.voiceTranscript && (
+                              <div className="mt-2 rounded-lg bg-glass p-3 text-sm text-foreground/90 border border-glass/20">
+                                <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-semibold text-primary uppercase tracking-wider mb-1.5">
+                                  AI Transcript
+                                </span>
+                                <p className="leading-relaxed italic">"{feedback.voiceTranscript}"</p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
